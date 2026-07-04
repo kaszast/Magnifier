@@ -54,6 +54,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -207,6 +208,14 @@ fun MagnifierMainScreen() {
     var minZoom by remember { mutableStateOf(1.0f) }
     var maxZoom by remember { mutableStateOf(8.0f) }
 
+    // Multi-camera states
+    var availableCameras by remember { mutableStateOf<List<androidx.camera.core.CameraInfo>>(emptyList()) }
+    var selectedCameraIndex by remember { mutableStateOf(0) }
+
+    // Additional software digital zoom and pan states for active camera preview
+    var extraDigitalZoom by remember { mutableStateOf(1.0f) }
+    var extraDigitalPan by remember { mutableStateOf(Offset.Zero) }
+
     var torchEnabled by remember { mutableStateOf(false) }
 
     // Exposure (live brightness/contrast adjustment)
@@ -315,8 +324,20 @@ fun MagnifierMainScreen() {
     }
 
     // Bind camera lifecycle
-    LaunchedEffect(cameraProviderFuture) {
+    LaunchedEffect(cameraProviderFuture, selectedCameraIndex) {
         val cameraProvider = cameraProviderFuture.get()
+        val cameraInfos = cameraProvider.availableCameraInfos
+        availableCameras = cameraInfos
+        
+        if (cameraInfos.isEmpty()) return@LaunchedEffect
+
+        // Ensure selectedCameraIndex is within bounds
+        val index = selectedCameraIndex.coerceIn(0, cameraInfos.lastIndex)
+        val selectedCameraInfo = cameraInfos[index]
+
+        // Reset torch state when swapping cameras
+        torchEnabled = false
+
         val preview = Preview.Builder().build().also {
             it.surfaceProvider = previewView.surfaceProvider
         }
@@ -326,7 +347,12 @@ fun MagnifierMainScreen() {
             .build()
         imageCapture = localImageCapture
 
-        val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+        // Create selector that targets this specific physical camera
+        val cameraSelector = CameraSelector.Builder()
+            .addCameraFilter { infos ->
+                infos.filter { it == selectedCameraInfo }
+            }
+            .build()
 
         try {
             cameraProvider.unbindAll()
@@ -381,13 +407,14 @@ fun MagnifierMainScreen() {
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
+                                // 1. Hardware Zoom Controls
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "NAGYÍTÁS MÉRTÉKE",
+                                        text = "KAMERA HARDVERES NAGYÍTÁS",
                                         color = Color(0xFFB180FF),
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
@@ -438,7 +465,7 @@ fun MagnifierMainScreen() {
                                                 liveZoomRatio = newValue.coerceIn(minZoom, maxZoom)
                                             }
                                         },
-                                        valueRange = if (isFrozen) 1.0f..8.0f else minZoom..maxZoom,
+                                        valueRange = if (isFrozen) 1.0f..10.0f else minZoom..maxZoom,
                                         colors = SliderDefaults.colors(
                                             activeTrackColor = Color(0xFFB180FF),
                                             thumbColor = Color(0xFFB180FF),
@@ -456,7 +483,7 @@ fun MagnifierMainScreen() {
                                             .border(1.dp, Color(0xFF2E2C33), CircleShape)
                                             .clickable {
                                                 if (isFrozen) {
-                                                    frozenScale = min(8.0f, frozenScale + 0.5f)
+                                                    frozenScale = min(10.0f, frozenScale + 0.5f)
                                                 } else {
                                                     liveZoomRatio = min(maxZoom, liveZoomRatio + 0.5f)
                                                 }
@@ -472,7 +499,93 @@ fun MagnifierMainScreen() {
                                     }
                                 }
 
-                                // Quick Zoom Presets
+                                // 2. Extra Digital Zoom Controls
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "SZOFTVERES EXTRA DIGITÁLIS NAGYÍTÁS",
+                                        color = Color(0xFFD0BCFF),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.sp
+                                    )
+                                    Text(
+                                        text = String.format("%.1fx", extraDigitalZoom),
+                                        color = Color.White,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Black
+                                    )
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .background(Color(0xFF1B1A21), CircleShape)
+                                            .border(1.dp, Color(0xFF2E2C33), CircleShape)
+                                            .clickable {
+                                                extraDigitalZoom = max(1.0f, extraDigitalZoom - 0.5f)
+                                                if (extraDigitalZoom == 1.0f) {
+                                                    extraDigitalPan = Offset.Zero
+                                                }
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Remove,
+                                            contentDescription = "Szoftveres csökkentés",
+                                            tint = Color(0xFFE6E1E5),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+
+                                    Slider(
+                                        value = extraDigitalZoom,
+                                        onValueChange = { newValue ->
+                                            extraDigitalZoom = newValue
+                                            if (extraDigitalZoom == 1.0f) {
+                                                extraDigitalPan = Offset.Zero
+                                            }
+                                        },
+                                        valueRange = 1.0f..6.0f,
+                                        colors = SliderDefaults.colors(
+                                            activeTrackColor = Color(0xFFD0BCFF),
+                                            thumbColor = Color(0xFFD0BCFF),
+                                            inactiveTrackColor = Color(0xFF1B1A21)
+                                        ),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .testTag("extra_zoom_slider")
+                                    )
+
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .background(Color(0xFF1B1A21), CircleShape)
+                                            .border(1.dp, Color(0xFF2E2C33), CircleShape)
+                                            .clickable {
+                                                extraDigitalZoom = min(6.0f, extraDigitalZoom + 0.5f)
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = "Szoftveres növelés",
+                                            tint = Color(0xFFE6E1E5),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+
+                                // 3. Quick Zoom Presets
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -481,13 +594,25 @@ fun MagnifierMainScreen() {
                                 ) {
                                     val presets = listOf(1.0f, 2.0f, 4.0f, 8.0f)
                                     presets.forEach { preset ->
-                                        val isSelected = if (isFrozen) frozenScale == preset else liveZoomRatio == preset
+                                        val isSelected = if (isFrozen) {
+                                            frozenScale == preset
+                                        } else {
+                                            (liveZoomRatio * extraDigitalZoom) == preset
+                                        }
                                         OutlinedButton(
                                             onClick = {
                                                 if (isFrozen) {
                                                     frozenScale = preset
                                                 } else {
-                                                    liveZoomRatio = preset.coerceIn(minZoom, maxZoom)
+                                                    if (preset <= maxZoom) {
+                                                        liveZoomRatio = preset.coerceIn(minZoom, maxZoom)
+                                                        extraDigitalZoom = 1.0f
+                                                        extraDigitalPan = Offset.Zero
+                                                    } else {
+                                                        liveZoomRatio = maxZoom
+                                                        extraDigitalZoom = preset / maxZoom
+                                                        extraDigitalPan = Offset.Zero
+                                                    }
                                                 }
                                             },
                                             colors = ButtonDefaults.outlinedButtonColors(
@@ -503,6 +628,97 @@ fun MagnifierMainScreen() {
                                         ) {
                                             Text(text = "${preset.toInt()}x", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                         }
+                                    }
+                                }
+
+                                // 4. Active Camera Swap Controls
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "AKTÍV KAMERA",
+                                    color = Color(0xFFB180FF),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    // Button to toggle/cycle cameras
+                                    Button(
+                                        onClick = {
+                                            if (!isFrozen && availableCameras.isNotEmpty()) {
+                                                selectedCameraIndex = (selectedCameraIndex + 1) % availableCameras.size
+                                            }
+                                        },
+                                        enabled = !isFrozen && availableCameras.isNotEmpty(),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFF1B1A21),
+                                            contentColor = Color(0xFFE6E1E5)
+                                        ),
+                                        border = BorderStroke(1.dp, Color(0xFF2E2C33)),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(38.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.SwitchCamera,
+                                                contentDescription = "Kamera váltás",
+                                                tint = Color(0xFFB180FF),
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Text(
+                                                text = "Kamera Váltása",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+
+                                    // Display Active Camera Name
+                                    val activeCameraInfo = availableCameras.getOrNull(selectedCameraIndex)
+                                    val cameraLabel = if (activeCameraInfo != null) {
+                                        val lensFacing = activeCameraInfo.lensFacing
+                                        val facingLabel = when (lensFacing) {
+                                            0 -> "Előlapi"
+                                            1 -> "Hátlapi"
+                                            2 -> "Külső"
+                                            else -> "Ismeretlen"
+                                        }
+                                        val cameraId = try {
+                                            androidx.camera.camera2.interop.Camera2CameraInfo.from(activeCameraInfo).cameraId
+                                        } catch (e: Exception) {
+                                            ""
+                                        }
+                                        if (cameraId.isNotEmpty()) "$facingLabel ($cameraId)" else facingLabel
+                                    } else {
+                                        "Nincs kamera"
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(38.dp)
+                                            .background(Color(0xFF111115), RoundedCornerShape(12.dp))
+                                            .border(1.dp, Color(0xFF2E2C33), RoundedCornerShape(12.dp))
+                                            .padding(horizontal = 8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = cameraLabel,
+                                            color = Color.White,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
                                     }
                                 }
                             }
@@ -834,6 +1050,9 @@ fun MagnifierMainScreen() {
                                             if (bmp != null) {
                                                 frozenBitmap = bmp
                                                 isFrozen = true
+                                                // Transfer current extra digital zoom and pan seamlessly to the frozen frame view
+                                                frozenScale = extraDigitalZoom
+                                                frozenOffset = extraDigitalPan
                                             } else {
                                                 Toast.makeText(context, "Nem sikerült kimerevíteni", Toast.LENGTH_SHORT).show()
                                             }
@@ -979,28 +1198,97 @@ fun MagnifierMainScreen() {
                         modifier = Modifier
                             .fillMaxSize()
                             .pointerInput(Unit) {
-                                detectTransformGestures { _, _, zoom, _ ->
+                                detectTransformGestures { _, pan, zoom, _ ->
                                     if (zoom != 1f) {
-                                        liveZoomRatio = (liveZoomRatio * zoom).coerceIn(minZoom, maxZoom)
+                                        if (zoom > 1f) {
+                                            // Zooming in
+                                            if (liveZoomRatio < maxZoom) {
+                                                val newRatio = liveZoomRatio * zoom
+                                                if (newRatio > maxZoom) {
+                                                    liveZoomRatio = maxZoom
+                                                    val excess = newRatio / maxZoom
+                                                    extraDigitalZoom = (extraDigitalZoom * excess).coerceIn(1.0f, 6.0f)
+                                                } else {
+                                                    liveZoomRatio = newRatio
+                                                }
+                                            } else {
+                                                extraDigitalZoom = (extraDigitalZoom * zoom).coerceIn(1.0f, 6.0f)
+                                            }
+                                        } else {
+                                            // Zooming out
+                                            if (extraDigitalZoom > 1.0f) {
+                                                val newExtra = extraDigitalZoom * zoom
+                                                if (newExtra < 1.0f) {
+                                                    extraDigitalZoom = 1.0f
+                                                    val remainder = newExtra / 1.0f
+                                                    liveZoomRatio = (liveZoomRatio * remainder).coerceIn(minZoom, maxZoom)
+                                                } else {
+                                                    extraDigitalZoom = newExtra
+                                                }
+                                            } else {
+                                                liveZoomRatio = (liveZoomRatio * zoom).coerceIn(minZoom, maxZoom)
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Handle panning/dragging when digitally zoomed in
+                                    if (extraDigitalZoom > 1.0f) {
+                                        extraDigitalPan += pan
+                                        // Restrict pan bounds based on digital zoom level
+                                        val maxPanX = (extraDigitalZoom - 1.0f) * 500f
+                                        val maxPanY = (extraDigitalZoom - 1.0f) * 800f
+                                        extraDigitalPan = Offset(
+                                            x = extraDigitalPan.x.coerceIn(-maxPanX, maxPanX),
+                                            y = extraDigitalPan.y.coerceIn(-maxPanY, maxPanY)
+                                        )
+                                    } else {
+                                        extraDigitalPan = Offset.Zero
                                     }
                                 }
                             }
                             .pointerInput(Unit) {
-                                detectTapGestures { offset ->
-                                    focusPoint = offset
-                                    focusTrigger++
+                                detectTapGestures(
+                                    onDoubleTap = {
+                                        if (extraDigitalZoom > 1.0f || liveZoomRatio > minZoom) {
+                                            extraDigitalZoom = 1.0f
+                                            extraDigitalPan = Offset.Zero
+                                            liveZoomRatio = minZoom
+                                        } else {
+                                            if (3.0f <= maxZoom) {
+                                                liveZoomRatio = 3.0f
+                                                extraDigitalZoom = 1.0f
+                                            } else {
+                                                liveZoomRatio = maxZoom
+                                                extraDigitalZoom = 3.0f / maxZoom
+                                            }
+                                            extraDigitalPan = Offset.Zero
+                                        }
+                                    },
+                                    onTap = { offset ->
+                                        focusPoint = offset
+                                        focusTrigger++
 
-                                    // Perform tap-to-focus on CameraX
-                                    val factory = previewView.meteringPointFactory
-                                    val point = factory.createPoint(offset.x, offset.y)
-                                    val action = FocusMeteringAction.Builder(point).build()
-                                    camera?.cameraControl?.startFocusAndMetering(action)
-                                }
+                                        // Perform tap-to-focus on CameraX with zoom correction
+                                        val factory = previewView.meteringPointFactory
+                                        val correctedX = (offset.x - extraDigitalPan.x) / extraDigitalZoom
+                                        val correctedY = (offset.y - extraDigitalPan.y) / extraDigitalZoom
+                                        val point = factory.createPoint(correctedX, correctedY)
+                                        val action = FocusMeteringAction.Builder(point).build()
+                                        camera?.cameraControl?.startFocusAndMetering(action)
+                                    }
+                                )
                             }
                     ) {
                         AndroidView(
                             factory = { previewView },
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    scaleX = extraDigitalZoom
+                                    scaleY = extraDigitalZoom
+                                    translationX = extraDigitalPan.x
+                                    translationY = extraDigitalPan.y
+                                }
                         )
 
                         // Overlay to apply live reading aid filter dynamically
@@ -1069,6 +1357,62 @@ fun MagnifierMainScreen() {
                                         translationX = frozenOffset.x
                                         translationY = frozenOffset.y
                                     }
+                            )
+                        }
+                    }
+                }
+
+                // Floating Camera Indicator and Swap Button Overlay (top-right of viewfinder)
+                if (!isFrozen && availableCameras.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(16.dp)
+                            .background(Color(0xFF09090B).copy(alpha = 0.75f), RoundedCornerShape(20.dp))
+                            .border(1.5.dp, Color(0xFFB180FF).copy(alpha = 0.6f), RoundedCornerShape(20.dp))
+                            .clickable {
+                                if (availableCameras.isNotEmpty()) {
+                                    selectedCameraIndex = (selectedCameraIndex + 1) % availableCameras.size
+                                }
+                            }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SwitchCamera,
+                                contentDescription = "Kamera váltás",
+                                tint = Color(0xFFB180FF),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            
+                            val activeCameraInfo = availableCameras.getOrNull(selectedCameraIndex)
+                            val cameraLabel = if (activeCameraInfo != null) {
+                                val lensFacing = activeCameraInfo.lensFacing
+                                val facingLabel = when (lensFacing) {
+                                    0 -> "Előlapi"
+                                    1 -> "Hátlapi"
+                                    2 -> "Külső"
+                                    else -> "Ismeretlen"
+                                }
+                                val cameraId = try {
+                                    androidx.camera.camera2.interop.Camera2CameraInfo.from(activeCameraInfo).cameraId
+                                } catch (e: Exception) {
+                                    ""
+                                }
+                                if (cameraId.isNotEmpty()) "$facingLabel ($cameraId)" else facingLabel
+                            } else {
+                                "Kamera"
+                            }
+                            
+                            Text(
+                                text = cameraLabel,
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
