@@ -49,6 +49,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -338,6 +340,29 @@ fun MagnifierMainScreen() {
     var isProcessing by remember { mutableStateOf(false) }
     var controlsVisible by remember { mutableStateOf(true) }
 
+    // Viewfinder and layout states
+    var viewportSize by remember { mutableStateOf(IntSize.Zero) }
+    var liveThumbnailBitmap by remember { mutableStateOf<Bitmap?>(null) }
+
+    // Grab thumbnail dynamically when digital zoom is active in live mode
+    LaunchedEffect(extraDigitalZoom > 1.0f) {
+        if (extraDigitalZoom > 1.0f) {
+            while (true) {
+                try {
+                    val bmp = previewView.bitmap
+                    if (bmp != null) {
+                        liveThumbnailBitmap = bmp
+                    }
+                } catch (e: Throwable) {
+                    // ignore errors fetching bitmap
+                }
+                delay(400)
+            }
+        } else {
+            liveThumbnailBitmap = null
+        }
+    }
+
     // Tap-to-focus animation feedback
     var focusPoint by remember { mutableStateOf<Offset?>(null) }
     var focusTrigger by remember { mutableStateOf(0) }
@@ -494,6 +519,7 @@ fun MagnifierMainScreen() {
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black)
+                    .onSizeChanged { viewportSize = it }
             ) {
                 // Main Viewport: Camera Live View OR Frozen Static Bitmap View
                 if (!isFrozen) {
@@ -649,71 +675,188 @@ fun MagnifierMainScreen() {
                     }
                 }
 
-                // Floating Camera Indicator and Swap Button Overlay (top-right of viewfinder)
-                if (!isFrozen && availableCameras.isNotEmpty()) {
-                    Box(
+                // Elegant Picture-in-Picture Viewfinder (Minimap) for Digital Zoom
+                val isDigitalZoomActive = if (isFrozen) frozenScale > 1.0f else extraDigitalZoom > 1.0f
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = isDigitalZoomActive,
+                    enter = androidx.compose.animation.fadeIn(),
+                    exit = androidx.compose.animation.fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = innerPadding.calculateTopPadding() + 16.dp, end = 16.dp)
+                ) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xE60D0C11)),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(8.dp),
                         modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = innerPadding.calculateTopPadding() + 16.dp, end = 16.dp)
-                            .background(Color(0xFF09090B).copy(alpha = 0.75f), RoundedCornerShape(20.dp))
-                            .border(1.5.dp, themeColor.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
-                            .clickable {
-                                if (availableCameras.isNotEmpty()) {
-                                    selectedCameraIndex = (selectedCameraIndex + 1) % availableCameras.size
-                                }
-                            }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center
+                            .width(110.dp)
+                            .height(170.dp)
+                            .border(1.5.dp, themeColor.copy(alpha = 0.8f), RoundedCornerShape(12.dp))
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.SwitchCamera,
-                                contentDescription = "Kamera váltás",
-                                tint = themeColor,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            
-                            val activeCameraInfo = availableCameras.getOrNull(selectedCameraIndex)
-                            val cameraIcon = if (activeCameraInfo != null) {
-                                when (activeCameraInfo.lensFacing) {
-                                    0 -> Icons.Default.Person // selfie/front
-                                    1 -> Icons.Default.PhotoCamera // back
-                                    else -> Icons.Default.Videocam // external
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            // 1. Render the un-zoomed source (either frozen bitmap or live preview periodic thumbnail)
+                            if (isFrozen) {
+                                frozenBitmap?.let { bitmap ->
+                                    Image(
+                                        bitmap = bitmap.asImageBitmap(),
+                                        contentDescription = "Frozen Full Image",
+                                        contentScale = ContentScale.FillBounds,
+                                        colorFilter = combinedColorFilter,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
                                 }
                             } else {
-                                Icons.Default.PhotoCamera
+                                liveThumbnailBitmap?.let { bitmap ->
+                                    Image(
+                                        bitmap = bitmap.asImageBitmap(),
+                                        contentDescription = "Live Full Image Preview",
+                                        contentScale = ContentScale.FillBounds,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } ?: Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = themeColor,
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                }
                             }
-                            
-                            Icon(
-                                imageVector = cameraIcon,
-                                contentDescription = "Aktív kamera",
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
-                            )
+
+                            // 2. Overlay view bounds highlighted box with custom drawing canvas
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                val canvasW = size.width
+                                val canvasH = size.height
+
+                                val scale = if (isFrozen) frozenScale else extraDigitalZoom
+                                val pan = if (isFrozen) frozenOffset else extraDigitalPan
+
+                                val wWidth = viewportSize.width.toFloat().coerceAtLeast(1f)
+                                val wHeight = viewportSize.height.toFloat().coerceAtLeast(1f)
+
+                                val boxWidthFraction = 1f / scale
+                                val boxHeightFraction = 1f / scale
+
+                                val centerXFraction = 0.5f - (pan.x / (scale * wWidth))
+                                val centerYFraction = 0.5f - (pan.y / (scale * wHeight))
+
+                                val rectW = canvasW * boxWidthFraction
+                                val rectH = canvasH * boxHeightFraction
+
+                                val rectX = ((canvasW * centerXFraction) - (rectW / 2f)).coerceIn(0f, canvasW - rectW)
+                                val rectY = ((canvasH * centerYFraction) - (rectH / 2f)).coerceIn(0f, canvasH - rectH)
+
+                                // Draw dimmed non-visible outer region
+                                // Top
+                                drawRect(
+                                    color = Color.Black.copy(alpha = 0.5f),
+                                    topLeft = Offset(0f, 0f),
+                                    size = androidx.compose.ui.geometry.Size(canvasW, rectY)
+                                )
+                                // Bottom
+                                drawRect(
+                                    color = Color.Black.copy(alpha = 0.5f),
+                                    topLeft = Offset(0f, rectY + rectH),
+                                    size = androidx.compose.ui.geometry.Size(canvasW, canvasH - (rectY + rectH))
+                                )
+                                // Left
+                                drawRect(
+                                    color = Color.Black.copy(alpha = 0.5f),
+                                    topLeft = Offset(0f, rectY),
+                                    size = androidx.compose.ui.geometry.Size(rectX, rectH)
+                                )
+                                // Right
+                                drawRect(
+                                    color = Color.Black.copy(alpha = 0.5f),
+                                    topLeft = Offset(rectX + rectW, rectY),
+                                    size = androidx.compose.ui.geometry.Size(canvasW - (rectX + rectW), rectH)
+                                )
+
+                                // Draw glowing neon viewport border
+                                drawRect(
+                                    color = themeColor,
+                                    topLeft = Offset(rectX, rectY),
+                                    size = androidx.compose.ui.geometry.Size(rectW, rectH),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.5.dp.toPx())
+                                )
+                            }
                         }
                     }
                 }
 
-                // Floating Controls Visibility Toggle Button Overlay (top-left of viewfinder)
-                Box(
+                // Row on the left containing the Full Screen (visibility) toggle and the Camera Swap button in a separated area
+                Row(
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .padding(top = innerPadding.calculateTopPadding() + 16.dp, start = 16.dp)
-                        .background(Color(0xFF09090B).copy(alpha = 0.75f), CircleShape)
-                        .border(1.5.dp, themeColor.copy(alpha = 0.6f), CircleShape)
-                        .clickable { controlsVisible = !controlsVisible }
-                        .padding(10.dp),
-                    contentAlignment = Alignment.Center
+                        .padding(top = innerPadding.calculateTopPadding() + 16.dp, start = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = if (controlsVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                        contentDescription = "Kezelőszervek",
-                        tint = themeColor,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    // Floating Controls Visibility Toggle Button (Full Screen)
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFF09090B).copy(alpha = 0.75f), CircleShape)
+                            .border(1.5.dp, themeColor.copy(alpha = 0.6f), CircleShape)
+                            .clickable { controlsVisible = !controlsVisible }
+                            .padding(10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (controlsVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = "Kezelőszervek",
+                            tint = themeColor,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    // Floating Camera Indicator and Swap Button (in a separated box)
+                    if (!isFrozen && availableCameras.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .background(Color(0xFF09090B).copy(alpha = 0.75f), RoundedCornerShape(20.dp))
+                                .border(1.5.dp, themeColor.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
+                                .clickable {
+                                    if (availableCameras.isNotEmpty()) {
+                                        selectedCameraIndex = (selectedCameraIndex + 1) % availableCameras.size
+                                    }
+                                }
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.SwitchCamera,
+                                    contentDescription = "Kamera váltás",
+                                    tint = themeColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                
+                                val activeCameraInfo = availableCameras.getOrNull(selectedCameraIndex)
+                                val cameraIcon = if (activeCameraInfo != null) {
+                                    when (activeCameraInfo.lensFacing) {
+                                        0 -> Icons.Default.Person // selfie/front
+                                        1 -> Icons.Default.PhotoCamera // back
+                                        else -> Icons.Default.Videocam // external
+                                    }
+                                } else {
+                                    Icons.Default.PhotoCamera
+                                }
+                                
+                                Icon(
+                                    imageVector = cameraIcon,
+                                    contentDescription = "Aktív kamera",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
