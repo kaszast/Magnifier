@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
@@ -107,6 +108,8 @@ fun hasCameraPermission(context: Context): Boolean {
     ) == android.content.pm.PackageManager.PERMISSION_GRANTED
 }
 
+data class AppThemeColor(val name: String, val color: Color)
+
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun MagnifierApp() {
@@ -159,55 +162,51 @@ fun PermissionRequiredScreen(onRequestPermission: () -> Unit) {
         ) {
             Box(
                 modifier = Modifier
-                    .size(96.dp)
+                    .size(120.dp)
                     .background(Color(0xFF1E293B), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.CameraAlt,
-                    contentDescription = "Camera Icon",
+                    contentDescription = "Camera",
                     tint = Color(0xFFFBBF24), // Amber 400
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(56.dp)
                 )
+                // Lock overlay at top-right indicating permission is needed/locked
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(Color(0xFFEF4444), CircleShape)
+                        .align(Alignment.TopEnd)
+                        .border(2.dp, Color(0xFF0F172A), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Permission locked",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
             
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Text(
-                text = "Kamera hozzáférés szükséges",
-                color = Color.White,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            Text(
-                text = "A nagyító alkalmazás a készülék kameráját használja a kép felnagyításához. Kérjük, engedélyezze a kamera használatát.",
-                color = Color(0xFF94A3B8), // Slate 400
-                fontSize = 15.sp,
-                textAlign = TextAlign.Center,
-                lineHeight = 22.sp,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(48.dp))
             
             Button(
                 onClick = onRequestPermission,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFBBF24), // Amber 400
-                    contentColor = Color.Black
+                    containerColor = Color(0xFF10B981), // Emerald Green for "Allow/Grant"
+                    contentColor = Color.White
                 ),
-                contentPadding = PaddingValues(horizontal = 32.dp, vertical = 14.dp),
-                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 48.dp, vertical = 16.dp),
+                shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.testTag("request_permission_button")
             ) {
-                Text(
-                    text = "Engedélyezés",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Grant Permission",
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }
@@ -220,18 +219,64 @@ fun MagnifierMainScreen() {
     val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
 
-    var isLifecycleResumed by remember {
-        mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED))
+    val themeOptions = remember {
+        listOf(
+            AppThemeColor("Lila", Color(0xFFB180FF)),
+            AppThemeColor("Zöld", Color(0xFF00FF87)),
+            AppThemeColor("Arany", Color(0xFFFFB300)),
+            AppThemeColor("Kék", Color(0xFF00D2FF)),
+            AppThemeColor("Narancs", Color(0xFFFF6B00))
+        )
+    }
+    var currentThemeIndex by remember { mutableStateOf(0) }
+    val themeColor = themeOptions[currentThemeIndex].color
+
+    val customLifecycleOwner = remember {
+        object : androidx.lifecycle.LifecycleOwner {
+            private val lifecycleRegistry = androidx.lifecycle.LifecycleRegistry(this)
+            override val lifecycle: androidx.lifecycle.Lifecycle = lifecycleRegistry
+            
+            init {
+                lifecycleRegistry.currentState = androidx.lifecycle.Lifecycle.State.INITIALIZED
+            }
+            
+            fun setCurrentState(state: androidx.lifecycle.Lifecycle.State) {
+                lifecycleRegistry.currentState = state
+            }
+        }
     }
 
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                isLifecycleResumed = true
-            } else if (event == androidx.lifecycle.Lifecycle.Event.ON_PAUSE) {
-                isLifecycleResumed = false
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_CREATE -> {
+                    customLifecycleOwner.setCurrentState(androidx.lifecycle.Lifecycle.State.CREATED)
+                }
+                androidx.lifecycle.Lifecycle.Event.ON_START -> {
+                    customLifecycleOwner.setCurrentState(androidx.lifecycle.Lifecycle.State.CREATED)
+                }
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
+                    customLifecycleOwner.setCurrentState(androidx.lifecycle.Lifecycle.State.RESUMED)
+                }
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> {
+                    customLifecycleOwner.setCurrentState(androidx.lifecycle.Lifecycle.State.CREATED)
+                }
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> {
+                    customLifecycleOwner.setCurrentState(androidx.lifecycle.Lifecycle.State.CREATED)
+                }
+                androidx.lifecycle.Lifecycle.Event.ON_DESTROY -> {
+                    customLifecycleOwner.setCurrentState(androidx.lifecycle.Lifecycle.State.DESTROYED)
+                }
+                else -> {}
             }
         }
+        val currentState = lifecycleOwner.lifecycle.currentState
+        if (currentState == androidx.lifecycle.Lifecycle.State.RESUMED) {
+            customLifecycleOwner.setCurrentState(androidx.lifecycle.Lifecycle.State.RESUMED)
+        } else if (currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.CREATED)) {
+            customLifecycleOwner.setCurrentState(androidx.lifecycle.Lifecycle.State.CREATED)
+        }
+        
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
@@ -286,7 +331,9 @@ fun MagnifierMainScreen() {
 
     // UI overlays / status
     var activeTab by remember { mutableStateOf(0) } // 0: Nagyítás, 1: Szűrők, 2: Képkorrekció
-    var statusMessage by remember { mutableStateOf<String?>(null) }
+    var toastIcon by remember { mutableStateOf<androidx.compose.ui.graphics.vector.ImageVector>(Icons.Default.CheckCircle) }
+    var toastSubIcon by remember { mutableStateOf<androidx.compose.ui.graphics.vector.ImageVector?>(null) }
+    var toastColor by remember { mutableStateOf(Color(0xFF10B981)) }
     var showSavedToast by remember { mutableStateOf(false) }
     var isProcessing by remember { mutableStateOf(false) }
     var controlsVisible by remember { mutableStateOf(true) }
@@ -373,30 +420,21 @@ fun MagnifierMainScreen() {
     }
 
     // Bind camera lifecycle
-    LaunchedEffect(cameraProviderFuture, selectedCameraIndex, isLifecycleResumed) {
-        if (!isLifecycleResumed) {
-            try {
-                val cameraProvider = cameraProviderFuture.get()
-                cameraProvider.unbindAll()
-            } catch (exc: Exception) {
-                Log.e("Magnifier", "Failed to unbind on pause", exc)
-            }
-            return@LaunchedEffect
-        }
+    LaunchedEffect(cameraProviderFuture, selectedCameraIndex) {
         if (!hasCameraPermission(context)) return@LaunchedEffect
         val cameraProvider = cameraProviderFuture.get()
         val cameraInfos = cameraProvider.availableCameraInfos
         availableCameras = cameraInfos
         
         if (cameraInfos.isEmpty()) return@LaunchedEffect
-
+ 
         // Ensure selectedCameraIndex is within bounds
         val index = selectedCameraIndex.coerceIn(0, cameraInfos.lastIndex)
         val selectedCameraInfo = cameraInfos[index]
-
+ 
         // Reset torch state when swapping cameras
         torchEnabled = false
-
+ 
         val preview = Preview.Builder().build().also {
             it.surfaceProvider = previewView.surfaceProvider
         }
@@ -405,18 +443,18 @@ fun MagnifierMainScreen() {
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
             .build()
         imageCapture = localImageCapture
-
+ 
         // Create selector that targets this specific physical camera
         val cameraSelector = CameraSelector.Builder()
             .addCameraFilter { infos ->
                 infos.filter { it == selectedCameraInfo }
             }
             .build()
-
+ 
         try {
             cameraProvider.unbindAll()
             val cameraInstance = cameraProvider.bindToLifecycle(
-                lifecycleOwner,
+                customLifecycleOwner,
                 cameraSelector,
                 preview,
                 localImageCapture
@@ -424,14 +462,14 @@ fun MagnifierMainScreen() {
             camera = cameraInstance
             
             // Observe live zoom capabilities
-            cameraInstance.cameraInfo.zoomState.observe(lifecycleOwner) { zoomState ->
+            cameraInstance.cameraInfo.zoomState.observe(customLifecycleOwner) { zoomState ->
                 minZoom = zoomState.minZoomRatio
                 maxZoom = zoomState.maxZoomRatio
                 // Safely update liveZoomRatio if out of bounds
                 if (liveZoomRatio < minZoom) liveZoomRatio = minZoom
                 if (liveZoomRatio > maxZoom) liveZoomRatio = maxZoom
             }
-
+ 
             // Observe exposure capabilities
             val exposureState = cameraInstance.cameraInfo.exposureState
             minExposureIndex = exposureState.exposureCompensationRange.lower
@@ -618,7 +656,7 @@ fun MagnifierMainScreen() {
                             .align(Alignment.TopEnd)
                             .padding(top = innerPadding.calculateTopPadding() + 16.dp, end = 16.dp)
                             .background(Color(0xFF09090B).copy(alpha = 0.75f), RoundedCornerShape(20.dp))
-                            .border(1.5.dp, Color(0xFFB180FF).copy(alpha = 0.6f), RoundedCornerShape(20.dp))
+                            .border(1.5.dp, themeColor.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
                             .clickable {
                                 if (availableCameras.isNotEmpty()) {
                                     selectedCameraIndex = (selectedCameraIndex + 1) % availableCameras.size
@@ -634,34 +672,26 @@ fun MagnifierMainScreen() {
                             Icon(
                                 imageVector = Icons.Default.SwitchCamera,
                                 contentDescription = "Kamera váltás",
-                                tint = Color(0xFFB180FF),
-                                modifier = Modifier.size(16.dp)
+                                tint = themeColor,
+                                modifier = Modifier.size(18.dp)
                             )
                             
                             val activeCameraInfo = availableCameras.getOrNull(selectedCameraIndex)
-                            val cameraLabel = if (activeCameraInfo != null) {
-                                val lensFacing = activeCameraInfo.lensFacing
-                                val facingLabel = when (lensFacing) {
-                                    0 -> "Előlapi"
-                                    1 -> "Hátlapi"
-                                    2 -> "Külső"
-                                    else -> "Ismeretlen"
+                            val cameraIcon = if (activeCameraInfo != null) {
+                                when (activeCameraInfo.lensFacing) {
+                                    0 -> Icons.Default.Person // selfie/front
+                                    1 -> Icons.Default.PhotoCamera // back
+                                    else -> Icons.Default.Videocam // external
                                 }
-                                val cameraId = try {
-                                    androidx.camera.camera2.interop.Camera2CameraInfo.from(activeCameraInfo).cameraId
-                                } catch (e: Exception) {
-                                    ""
-                                }
-                                if (cameraId.isNotEmpty()) "$facingLabel ($cameraId)" else facingLabel
                             } else {
-                                "Kamera"
+                                Icons.Default.PhotoCamera
                             }
                             
-                            Text(
-                                text = cameraLabel,
-                                color = Color.White,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
+                            Icon(
+                                imageVector = cameraIcon,
+                                contentDescription = "Aktív kamera",
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }
@@ -672,29 +702,18 @@ fun MagnifierMainScreen() {
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .padding(top = innerPadding.calculateTopPadding() + 16.dp, start = 16.dp)
-                        .background(Color(0xFF09090B).copy(alpha = 0.75f), RoundedCornerShape(20.dp))
-                        .border(1.5.dp, Color(0xFFB180FF).copy(alpha = 0.6f), RoundedCornerShape(20.dp))
+                        .background(Color(0xFF09090B).copy(alpha = 0.75f), CircleShape)
+                        .border(1.5.dp, themeColor.copy(alpha = 0.6f), CircleShape)
                         .clickable { controlsVisible = !controlsVisible }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(10.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (controlsVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = "Kezelőszervek",
-                            tint = Color(0xFFB180FF),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            text = if (controlsVisible) "Teljes nézet" else "Kezelőszervek",
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    Icon(
+                        imageVector = if (controlsVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = "Kezelőszervek",
+                        tint = themeColor,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
 
@@ -742,12 +761,11 @@ fun MagnifierMainScreen() {
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                                         ) {
-                                            Text(
-                                                text = "NAGYÍTÁS",
-                                                color = Color(0xFFB180FF),
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                letterSpacing = 1.sp
+                                            Icon(
+                                                imageVector = Icons.Default.ZoomIn,
+                                                contentDescription = "Nagyítás",
+                                                tint = themeColor,
+                                                modifier = Modifier.size(18.dp)
                                             )
                                             if (isDigitalRange) {
                                                 Box(
@@ -755,11 +773,11 @@ fun MagnifierMainScreen() {
                                                         .background(Color(0xFFD0BCFF).copy(alpha = 0.15f), RoundedCornerShape(4.dp))
                                                         .padding(horizontal = 4.dp, vertical = 2.dp)
                                                 ) {
-                                                    Text(
-                                                        text = "SZOFTVERES",
-                                                        color = Color(0xFFD0BCFF),
-                                                        fontSize = 8.sp,
-                                                        fontWeight = FontWeight.Bold
+                                                    Icon(
+                                                        imageVector = Icons.Default.Memory,
+                                                        contentDescription = "Szoftveres",
+                                                        tint = Color(0xFFD0BCFF),
+                                                        modifier = Modifier.size(12.dp)
                                                     )
                                                 }
                                             }
@@ -826,8 +844,8 @@ fun MagnifierMainScreen() {
                                             },
                                             valueRange = if (isFrozen) 1.0f..10.0f else minZoom..(maxZoom * 6.0f),
                                             colors = SliderDefaults.colors(
-                                                activeTrackColor = Color(0xFFB180FF),
-                                                thumbColor = Color(0xFFB180FF),
+                                                activeTrackColor = themeColor,
+                                                thumbColor = themeColor,
                                                 inactiveTrackColor = Color(0xFF1B1A21)
                                             ),
                                             modifier = Modifier
@@ -886,10 +904,10 @@ fun MagnifierMainScreen() {
                                                         .weight(1f)
                                                         .heightIn(min = 48.dp)
                                                         .background(
-                                                            if (isSelected) Color(0xFFB180FF) else Color(0xFF1B1A21),
+                                                            if (isSelected) themeColor else Color(0xFF1B1A21),
                                                             RoundedCornerShape(12.dp)
                                                         )
-                                                        .border(1.dp, if (isSelected) Color(0xFFB180FF) else Color(0xFF2E2C33), RoundedCornerShape(12.dp))
+                                                        .border(1.dp, if (isSelected) themeColor else Color(0xFF2E2C33), RoundedCornerShape(12.dp))
                                                         .clickable {
                                                             if (isFrozen) {
                                                                 frozenScale = preset
@@ -925,13 +943,17 @@ fun MagnifierMainScreen() {
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    Text(
-                                        text = "OLVASÁSI SEGÉDSZŰRŐK",
-                                        color = Color(0xFFB180FF),
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        letterSpacing = 1.sp
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ColorLens,
+                                            contentDescription = "Szűrők",
+                                            tint = themeColor,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -948,44 +970,61 @@ fun MagnifierMainScreen() {
                                                     )
                                                     .border(
                                                         1.dp,
-                                                        if (selected) Color(0xFFB180FF) else Color(0xFF2E2C33),
+                                                        if (selected) themeColor else Color(0xFF2E2C33),
                                                         RoundedCornerShape(14.dp)
                                                     )
                                                     .clickable { filterMode = mode }
                                                     .padding(vertical = 6.dp),
                                                 contentAlignment = Alignment.Center
                                             ) {
-                                                Column(
-                                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(28.dp)
+                                                        .background(
+                                                            brush = when (mode) {
+                                                                FilterMode.NORMAL -> {
+                                                                    Brush.sweepGradient(
+                                                                        colors = listOf(
+                                                                            Color(0xFFFF007F), Color(0xFFFF0000), Color(0xFFFF7F00),
+                                                                            Color(0xFFFFFF00), Color(0xFF00FF00), Color(0xFF00FFFF),
+                                                                            Color(0xFF0000FF), Color(0xFF7F00FF), Color(0xFFFF007F)
+                                                                        )
+                                                                    )
+                                                                }
+                                                                FilterMode.MONOCHROME -> {
+                                                                    Brush.linearGradient(
+                                                                        colors = listOf(Color.White, Color.Black)
+                                                                    )
+                                                                }
+                                                                FilterMode.INVERTED -> {
+                                                                    Brush.linearGradient(
+                                                                        colors = listOf(Color.Cyan, Color.Black)
+                                                                    )
+                                                                }
+                                                                FilterMode.YELLOW -> {
+                                                                    Brush.linearGradient(
+                                                                        colors = listOf(Color(0xFFFBBF24), Color.Black)
+                                                                    )
+                                                                }
+                                                                FilterMode.RED -> {
+                                                                    Brush.linearGradient(
+                                                                        colors = listOf(Color.Red, Color.Black)
+                                                                    )
+                                                                }
+                                                            },
+                                                            shape = CircleShape
+                                                        )
+                                                        .border(1.dp, Color(0xFF2E2C33).copy(alpha = 0.5f), CircleShape),
+                                                    contentAlignment = Alignment.Center
                                                 ) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .size(10.dp)
-                                                            .background(
-                                                                when (mode) {
-                                                                    FilterMode.NORMAL -> Color.White
-                                                                    FilterMode.MONOCHROME -> Color.Gray
-                                                                    FilterMode.INVERTED -> Color.Cyan
-                                                                    FilterMode.YELLOW -> Color(0xFFFBBF24)
-                                                                    FilterMode.RED -> Color.Red
-                                                                },
-                                                                CircleShape
-                                                            )
-                                                    )
-                                                    Text(
-                                                        text = when (mode) {
-                                                            FilterMode.NORMAL -> "Normál"
-                                                            FilterMode.MONOCHROME -> "Szürke"
-                                                            FilterMode.INVERTED -> "Inverz"
-                                                            FilterMode.YELLOW -> "Sárga"
-                                                            FilterMode.RED -> "Vörös"
-                                                        },
-                                                        color = if (selected) Color.White else Color(0xFFE6E1E5).copy(alpha = 0.6f),
-                                                        fontSize = 9.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        maxLines = 1
-                                                    )
+                                                    if (selected) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Check,
+                                                            contentDescription = "Kiválasztva",
+                                                            tint = if (mode == FilterMode.MONOCHROME) Color.Black else Color.White,
+                                                            modifier = Modifier.size(14.dp)
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -1002,12 +1041,11 @@ fun MagnifierMainScreen() {
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text(
-                                            text = if (isFrozen) "KÉPKONTRASZT KORREKCIÓ" else "KAMERA EXPOZÍCIÓ (FÉNYERŐ)",
-                                            color = Color(0xFFB180FF),
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            letterSpacing = 1.sp
+                                        Icon(
+                                            imageVector = if (isFrozen) Icons.Default.Contrast else Icons.Default.Exposure,
+                                            contentDescription = "Korrekció",
+                                            tint = themeColor,
+                                            modifier = Modifier.size(18.dp)
                                         )
                                         Text(
                                             text = if (isFrozen) String.format("%.1fx", contrast) else "$exposureIndex EV",
@@ -1040,8 +1078,8 @@ fun MagnifierMainScreen() {
                                             valueRange = if (isFrozen) 1.0f..3.0f else minExposureIndex.toFloat()..maxExposureIndex.toFloat(),
                                             steps = if (!isFrozen && (maxExposureIndex - minExposureIndex > 0)) maxExposureIndex - minExposureIndex - 1 else 0,
                                             colors = SliderDefaults.colors(
-                                                activeTrackColor = Color(0xFFB180FF),
-                                                thumbColor = Color(0xFFB180FF),
+                                                activeTrackColor = themeColor,
+                                                thumbColor = themeColor,
                                                 inactiveTrackColor = Color(0xFF1B1A21)
                                             ),
                                             modifier = Modifier.weight(1f)
@@ -1054,12 +1092,11 @@ fun MagnifierMainScreen() {
                                             horizontalArrangement = Arrangement.SpaceBetween,
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Text(
-                                                text = "DIGITÁLIS FÉNYERŐ",
-                                                color = Color(0xFFB180FF),
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                letterSpacing = 1.sp
+                                            Icon(
+                                                imageVector = Icons.Default.LightMode,
+                                                contentDescription = "Fényerő",
+                                                tint = themeColor,
+                                                modifier = Modifier.size(18.dp)
                                             )
                                             Text(
                                                 text = String.format("%+d", brightness.roundToInt()),
@@ -1084,12 +1121,71 @@ fun MagnifierMainScreen() {
                                                 onValueChange = { brightness = it },
                                                 valueRange = -80f..80f,
                                                 colors = SliderDefaults.colors(
-                                                    activeTrackColor = Color(0xFFB180FF),
-                                                    thumbColor = Color(0xFFB180FF),
+                                                    activeTrackColor = themeColor,
+                                                    thumbColor = themeColor,
                                                     inactiveTrackColor = Color(0xFF1B1A21)
                                                 ),
                                                 modifier = Modifier.weight(1f)
                                             )
+                                        }
+                                    }
+                                }
+                            }
+                            3 -> { // THEMES TAB
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Palette,
+                                            contentDescription = "Téma",
+                                            tint = themeColor,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        themeOptions.forEachIndexed { index, option ->
+                                            val selected = currentThemeIndex == index
+                                            Box(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .heightIn(min = 52.dp)
+                                                    .background(
+                                                        if (selected) option.color.copy(alpha = 0.15f) else Color(0xFF111115),
+                                                        RoundedCornerShape(14.dp)
+                                                    )
+                                                    .border(
+                                                        1.dp,
+                                                        if (selected) option.color else Color(0xFF2E2C33),
+                                                        RoundedCornerShape(14.dp)
+                                                    )
+                                                    .clickable { currentThemeIndex = index }
+                                                    .padding(vertical = 6.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(28.dp)
+                                                        .background(option.color, CircleShape),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    if (selected) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Check,
+                                                            contentDescription = "Kiválasztva",
+                                                            tint = Color.Black,
+                                                            modifier = Modifier.size(14.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -1116,12 +1212,12 @@ fun MagnifierMainScreen() {
                             modifier = Modifier
                                 .size(48.dp)
                                 .background(
-                                    if (torchEnabled) Color(0xFFB180FF) else Color(0xFF1F1E26),
+                                    if (torchEnabled) themeColor else Color(0xFF1F1E26),
                                     CircleShape
                                 )
                                 .border(
                                     1.dp,
-                                    if (torchEnabled) Color(0xFFB180FF) else Color(0xFF2E2C33),
+                                    if (torchEnabled) themeColor else Color(0xFF2E2C33),
                                     CircleShape
                                 )
                                 .clickable { torchEnabled = !torchEnabled }
@@ -1143,31 +1239,36 @@ fun MagnifierMainScreen() {
                                 .background(Color(0xFF1F1E26), CircleShape)
                                 .border(1.dp, Color(0xFF2E2C33), CircleShape)
                                 .clickable {
-                                    isProcessing = true
-                                    coroutineScope.launch(Dispatchers.IO) {
-                                        val bitmapToSave = if (isFrozen && frozenBitmap != null) {
-                                            applyColorFilterToBitmap(frozenBitmap!!, combinedColorFilter)
-                                        } else {
-                                            previewView.bitmap
-                                        }
-
-                                        if (bitmapToSave != null) {
-                                            val savedUri = saveBitmapToGallery(context, bitmapToSave)
+                                    val rawBitmap = if (isFrozen && frozenBitmap != null) {
+                                        frozenBitmap
+                                    } else {
+                                        previewView.bitmap
+                                    }
+                                    if (rawBitmap != null) {
+                                        isProcessing = true
+                                        coroutineScope.launch(Dispatchers.IO) {
+                                            val filteredBitmap = applyColorFilterToBitmap(rawBitmap, combinedColorFilter)
+                                            val savedUri = saveBitmapToGallery(context, filteredBitmap)
                                             withContext(Dispatchers.Main) {
                                                 isProcessing = false
                                                 if (savedUri != null) {
-                                                    statusMessage = "Kép elmentve a Galériába!"
+                                                    toastIcon = Icons.Default.Save
+                                                    toastSubIcon = Icons.Default.CheckCircle
+                                                    toastColor = Color(0xFF10B981) // emerald green
                                                     showSavedToast = true
                                                 } else {
-                                                    Toast.makeText(context, "Sikertelen mentés", Toast.LENGTH_SHORT).show()
+                                                    toastIcon = Icons.Default.Save
+                                                    toastSubIcon = Icons.Default.Error
+                                                    toastColor = Color(0xFFEF4444) // red
+                                                    showSavedToast = true
                                                 }
                                             }
-                                        } else {
-                                            withContext(Dispatchers.Main) {
-                                                isProcessing = false
-                                                Toast.makeText(context, "Nincs menthető kép", Toast.LENGTH_SHORT).show()
-                                            }
                                         }
+                                    } else {
+                                        toastIcon = Icons.Default.Save
+                                        toastSubIcon = Icons.Default.Warning
+                                        toastColor = Color(0xFFFFB300) // amber yellow
+                                        showSavedToast = true
                                     }
                                 }
                                 .testTag("save_button"),
@@ -1185,7 +1286,7 @@ fun MagnifierMainScreen() {
                         Box(
                             modifier = Modifier
                                 .size(72.dp)
-                                .border(3.dp, if (isFrozen) Color(0xFFEF4444) else Color(0xFFB180FF), CircleShape)
+                                .border(3.dp, if (isFrozen) Color(0xFFEF4444) else themeColor, CircleShape)
                                 .padding(4.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -1193,7 +1294,7 @@ fun MagnifierMainScreen() {
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .background(
-                                        if (isFrozen) Color(0xFFEF4444) else Color(0xFFB180FF),
+                                        if (isFrozen) Color(0xFFEF4444) else themeColor,
                                         CircleShape
                                     )
                                     .clickable {
@@ -1212,7 +1313,10 @@ fun MagnifierMainScreen() {
                                                 frozenScale = extraDigitalZoom
                                                 frozenOffset = extraDigitalPan
                                             } else {
-                                                Toast.makeText(context, "Nem sikerült kimerevíteni", Toast.LENGTH_SHORT).show()
+                                                toastIcon = Icons.Default.Pause
+                                                toastSubIcon = Icons.Default.Error
+                                                toastColor = Color(0xFFEF4444) // red
+                                                showSavedToast = true
                                             }
                                             isProcessing = false
                                         }
@@ -1236,25 +1340,25 @@ fun MagnifierMainScreen() {
                                 .background(Color(0xFF1F1E26), CircleShape)
                                 .border(1.dp, Color(0xFF2E2C33), CircleShape)
                                 .clickable {
-                                    isProcessing = true
-                                    coroutineScope.launch(Dispatchers.IO) {
-                                        val bitmapToShare = if (isFrozen && frozenBitmap != null) {
-                                            applyColorFilterToBitmap(frozenBitmap!!, combinedColorFilter)
-                                        } else {
-                                            previewView.bitmap
-                                        }
-
-                                        if (bitmapToShare != null) {
+                                    val rawBitmap = if (isFrozen && frozenBitmap != null) {
+                                        frozenBitmap
+                                    } else {
+                                        previewView.bitmap
+                                    }
+                                    if (rawBitmap != null) {
+                                        isProcessing = true
+                                        coroutineScope.launch(Dispatchers.IO) {
+                                            val filteredBitmap = applyColorFilterToBitmap(rawBitmap, combinedColorFilter)
                                             withContext(Dispatchers.Main) {
                                                 isProcessing = false
-                                                shareBitmap(context, bitmapToShare)
-                                            }
-                                        } else {
-                                            withContext(Dispatchers.Main) {
-                                                isProcessing = false
-                                                Toast.makeText(context, "Nincs megosztható kép", Toast.LENGTH_SHORT).show()
+                                                shareBitmap(context, filteredBitmap)
                                             }
                                         }
+                                    } else {
+                                        toastIcon = Icons.Default.Share
+                                        toastSubIcon = Icons.Default.Warning
+                                        toastColor = Color(0xFFFFB300) // amber yellow
+                                        showSavedToast = true
                                     }
                                 }
                                 .testTag("share_button"),
@@ -1282,7 +1386,8 @@ fun MagnifierMainScreen() {
                         val tabs = listOf(
                             Pair(Icons.Default.ZoomIn, "NAGYÍTÁS"),
                             Pair(Icons.Default.ColorLens, "SZŰRŐK"),
-                            Pair(Icons.Default.Tune, "KORREKCIÓ")
+                            Pair(Icons.Default.Tune, "KORREKCIÓ"),
+                            Pair(Icons.Default.Palette, "TÉMA")
                         )
                         
                         tabs.forEachIndexed { index, (icon, label) ->
@@ -1297,23 +1402,12 @@ fun MagnifierMainScreen() {
                                     .testTag("tab_$index"),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = icon,
-                                        contentDescription = label,
-                                        tint = if (selected) Color(0xFFB180FF) else Color(0xFFE6E1E5).copy(alpha = 0.5f),
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Text(
-                                        text = label,
-                                        color = if (selected) Color.White else Color(0xFFE6E1E5).copy(alpha = 0.5f),
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = label,
+                                    tint = if (selected) themeColor else Color(0xFFE6E1E5).copy(alpha = 0.5f),
+                                    modifier = Modifier.size(24.dp)
+                                )
                             }
                         }
                     }
@@ -1350,23 +1444,30 @@ fun MagnifierMainScreen() {
                     .padding(bottom = 32.dp)
             ) {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF10B981)),
+                    colors = CardDefaults.cardColors(containerColor = toastColor),
                     shape = RoundedCornerShape(12.dp),
                     elevation = CardDefaults.cardElevation(8.dp),
                     modifier = Modifier.padding(horizontal = 32.dp)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.CheckCircle, contentDescription = "Success", tint = Color.White)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = statusMessage ?: "Sikeres művelet!",
-                            color = Color.White,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold
+                        Icon(
+                            imageVector = toastIcon,
+                            contentDescription = "Notification primary",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
                         )
+                        toastSubIcon?.let { subIcon ->
+                            Icon(
+                                imageVector = subIcon,
+                                contentDescription = "Notification secondary",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
