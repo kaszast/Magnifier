@@ -356,7 +356,7 @@ fun MagnifierMainScreen() {
                 } catch (e: Throwable) {
                     // ignore errors fetching bitmap
                 }
-                delay(400)
+                delay(80)
             }
         } else {
             liveThumbnailBitmap = null
@@ -712,6 +712,7 @@ fun MagnifierMainScreen() {
                                         bitmap = bitmap.asImageBitmap(),
                                         contentDescription = "Live Full Image Preview",
                                         contentScale = ContentScale.FillBounds,
+                                        colorFilter = combinedColorFilter,
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 } ?: Box(
@@ -1390,7 +1391,7 @@ fun MagnifierMainScreen() {
                                     if (rawBitmap != null) {
                                         isProcessing = true
                                         coroutineScope.launch(Dispatchers.IO) {
-                                            val filteredBitmap = applyColorFilterToBitmap(rawBitmap, combinedColorFilter)
+                                            val filteredBitmap = applyColorFilterToBitmap(rawBitmap, filterMode, contrast, brightness)
                                             val savedUri = saveBitmapToGallery(context, filteredBitmap)
                                             withContext(Dispatchers.Main) {
                                                 isProcessing = false
@@ -1491,7 +1492,7 @@ fun MagnifierMainScreen() {
                                     if (rawBitmap != null) {
                                         isProcessing = true
                                         coroutineScope.launch(Dispatchers.IO) {
-                                            val filteredBitmap = applyColorFilterToBitmap(rawBitmap, combinedColorFilter)
+                                            val filteredBitmap = applyColorFilterToBitmap(rawBitmap, filterMode, contrast, brightness)
                                             withContext(Dispatchers.Main) {
                                                 isProcessing = false
                                                 shareBitmap(context, filteredBitmap)
@@ -1631,32 +1632,57 @@ fun MagnifierMainScreen() {
 }
 
 // Helper to manually render combined color matrices to a saved or shared bitmap in background threads
-fun applyColorFilterToBitmap(source: Bitmap, colorFilter: ColorFilter): Bitmap {
+fun applyColorFilterToBitmap(source: Bitmap, filterMode: FilterMode, contrast: Float, brightness: Float): Bitmap {
     val resultBitmap = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
     val canvas = android.graphics.Canvas(resultBitmap)
     val paint = android.graphics.Paint()
     
-    // Convert Compose ColorFilter back to Android's native Graphics ColorFilter
-    // Since we are using standard ColorMatrixColorFilter, we can construct one manually:
-    // To ensure full thread safety and perfect compatibility, we get the matrix values and apply them.
-    paint.colorFilter = colorFilter.asAndroidColorFilter()
+    val matrix = androidx.compose.ui.graphics.ColorMatrix()
+    
+    // 1. Apply base accessibility/night filter
+    when (filterMode) {
+        FilterMode.NORMAL -> { /* Keep identity */ }
+        FilterMode.MONOCHROME -> {
+            matrix.setToSaturation(0f)
+        }
+        FilterMode.INVERTED -> {
+            matrix.set(androidx.compose.ui.graphics.ColorMatrix(floatArrayOf(
+                -1f, 0f, 0f, 0f, 255f,
+                0f, -1f, 0f, 0f, 255f,
+                0f, 0f, -1f, 0f, 255f,
+                0f, 0f, 0f, 1f, 0f
+            )))
+        }
+        FilterMode.YELLOW -> {
+            matrix.set(androidx.compose.ui.graphics.ColorMatrix(floatArrayOf(
+                0.2126f * 1.6f, 0.7152f * 1.6f, 0.0722f * 1.6f, 0f, 0f,
+                0.2126f * 1.6f, 0.7152f * 1.6f, 0.0722f * 1.6f, 0f, 0f,
+                0f, 0f, 0f, 0f, 0f,
+                0f, 0f, 0f, 1f, 0f
+            )))
+        }
+        FilterMode.RED -> {
+            matrix.set(androidx.compose.ui.graphics.ColorMatrix(floatArrayOf(
+                0.2126f * 1.8f, 0.7152f * 1.8f, 0.0722f * 1.8f, 0f, 0f,
+                0f, 0f, 0f, 0f, 0f,
+                0f, 0f, 0f, 0f, 0f,
+                0f, 0f, 0f, 1f, 0f
+            )))
+        }
+    }
+
+    // 2. Adjust contrast & brightness directly in color matrix values
+    val values = matrix.values
+    for (i in 0..14) {
+        values[i] = values[i] * contrast
+    }
+    values[4] = values[4] * contrast + brightness
+    values[9] = values[9] * contrast + brightness
+    values[14] = values[14] * contrast + brightness
+
+    paint.colorFilter = android.graphics.ColorMatrixColorFilter(values)
     canvas.drawBitmap(source, 0f, 0f, paint)
     return resultBitmap
-}
-
-// Convert Jetpack Compose ColorFilter to Android Native ColorFilter
-fun ColorFilter.asAndroidColorFilter(): android.graphics.ColorFilter {
-    // Jetpack Compose provides custom Native ColorFilter extraction based on reflection or utility,
-    // but the cleanest, standard SDK path is to manually read back matrix values or use standard mapping:
-    // Here we can use standard casting as Compose's ColorFilter delegates to Native ColorFilter:
-    return try {
-        val field = this.javaClass.getDeclaredField("nativeColorFilter")
-        field.isAccessible = true
-        field.get(this) as android.graphics.ColorFilter
-    } catch (e: Exception) {
-        // Fallback: If reflection fails, we can reconstruct the android.graphics.ColorMatrixColorFilter
-        android.graphics.ColorMatrixColorFilter(FloatArray(20).apply { this[0] = 1f; this[5] = 1f; this[10] = 1f; this[15] = 1f })
-    }
 }
 
 // Helper to save Bitmap to the Device's Public/Scoped Gallery
