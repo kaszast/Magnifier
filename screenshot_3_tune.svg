@@ -1,0 +1,218 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
+    <defs>
+        <!-- Gradients -->
+        <linearGradient id="bg_grad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#0F0926" />
+            <stop offset="100%" stop-color="#1B1A21" />
+        </linearGradient>
+        
+        <linearGradient id="primary_grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#D0BCFF" />
+            <stop offset="100%" stop-color="#EFB8C8" />
+        </linearGradient>
+
+        <linearGradient id="tab_selected_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#2D2146" />
+            <stop offset="100%" stop-color="#1F1332" />
+        </linearGradient>
+
+        <!-- Lens high quality image gradient -->
+        <linearGradient id="lens_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#21173C" />
+            <stop offset="100%" stop-color="#361A4E" />
+        </linearGradient>
+
+        <!-- Fonts -->
+        <style>
+            .app-title { font-family: 'Inter', 'Segoe UI', sans-serif; font-weight: 800; font-size: 38px; fill: #FFFFFF; letter-spacing: 2px; }
+            .heading { font-family: 'Inter', 'Segoe UI', sans-serif; font-weight: 700; font-size: 26px; fill: #FFFFFF; }
+            .body-text { font-family: 'Inter', 'Segoe UI', sans-serif; font-weight: 500; font-size: 20px; fill: #E6E1E5; }
+            .caption { font-family: 'Inter', 'Segoe UI', sans-serif; font-weight: 400; font-size: 16px; fill: #938F99; }
+            .button-text { font-family: 'Inter', 'Segoe UI', sans-serif; font-weight: 700; font-size: 18px; fill: #FFFFFF; }
+            .label-selected { font-family: 'Inter', 'Segoe UI', sans-serif; font-weight: 700; font-size: 14px; fill: #D0BCFF; letter-spacing: 1px; }
+            .label-unselected { font-family: 'Inter', 'Segoe UI', sans-serif; font-weight: 500; font-size: 14px; fill: #938F99; letter-spacing: 1px; }
+            .hud-badge { font-family: 'Inter', 'Segoe UI', sans-serif; font-weight: 700; font-size: 18px; fill: #D0BCFF; }
+            .slider-label { font-family: 'Inter', 'Segoe UI', sans-serif; font-weight: 600; font-size: 16px; fill: #E6E1E5; }
+            .slider-value { font-family: 'Inter', 'Segoe UI', sans-serif; font-weight: 700; font-size: 16px; fill: #D0BCFF; }
+        </style>
+    </defs>
+
+    <!-- Background Frame -->
+    <rect width="1080" height="1920" fill="url(#bg_grad)" />
+
+    <!-- Outer Phone Mockup Bezel -->
+    <rect x="20" y="20" width="1040" height="1880" rx="60" fill="none" stroke="#25212E" stroke-width="12" />
+    <!-- Screen Notch/Camera Cutout -->
+    <rect x="420" y="45" width="240" height="40" rx="20" fill="#25212E" />
+
+    <!-- 1. HEADER BAR -->
+    <g transform="translate(60, 110)">
+        <text x="0" y="40" class="app-title">NAGYÍTÓ <tspan fill="#D0BCFF">PRO</tspan></text>
+        <text x="0" y="80" class="caption">3. KÉPERNYŐKÉP: Valós idejű képkorrekció és élesítés</text>
+        
+        <!-- Status Bar Mockup -->
+        <g transform="translate(800, 20)" fill="#FFFFFF" fill-opacity="0.7">
+            <!-- Signal -->
+            <rect x="0" y="8" width="5" height="12" rx="1" />
+            <rect x="8" y="4" width="5" height="16" rx="1" />
+            <rect x="16" y="0" width="5" height="20" rx="1" />
+            <!-- Wifi -->
+            <path d="M 32,5 A 12,12 0 0,1 52,5 M 36,9 A 7,7 0 0,1 48,9 M 40,14 A 2,2 0 0,1 44,14" fill="none" stroke="#FFFFFF" stroke-opacity="0.7" stroke-width="2.5" />
+            <!-- Battery -->
+            <rect x="64" y="2" width="30" height="16" rx="3" fill="none" stroke="#FFFFFF" stroke-opacity="0.7" stroke-width="2" />
+            <rect x="67" y="5" width="20" height="10" rx="1" />
+            <rect x="95" y="7" width="3" height="6" rx="1" />
+        </g>
+    </g>
+
+    <!-- 2. MAIN VIEWFINDER (Live Magnifier with Ultra-Sharpened Filter applied) -->
+    <g transform="translate(60, 240)">
+        <!-- Viewfinder Background -->
+        <rect width="960" height="1050" rx="40" fill="#090514" stroke="#D0BCFF" stroke-opacity="0.3" stroke-width="3" />
+        <clipPath id="viewfinder_clip">
+            <rect width="960" height="1050" rx="40" />
+        </clipPath>
+
+        <g clip-path="url(#viewfinder_clip)">
+            <!-- Grid Lines -->
+            <rect width="960" height="1050" fill="#13101E" />
+            <path d="M0,150 L960,150 M0,300 L960,300 M0,450 L960,450 M0,600 L960,600 M0,750 L960,750 M0,900 L960,900" fill="none" stroke="#FFFFFF" stroke-opacity="0.03" stroke-width="1.5" />
+
+            <!-- Original unzoomed background text (blurred, soft) -->
+            <g opacity="0.12">
+                <text x="50" y="100" font-family="'Inter', sans-serif" font-size="16" fill="#FFFFFF">ACTIVE SUBSTANCE: Each film-coated tablet contains 500 mg of paracetamol.</text>
+                <text x="50" y="140" font-family="'Inter', sans-serif" font-size="16" fill="#FFFFFF">INDICATIONS: For the temporary relief of mild to moderate pain including headache.</text>
+            </g>
+
+            <!-- MAGNIFIED LENS AREA (High contrast + Sharpened text rendering) -->
+            <circle cx="480" cy="525" r="380" fill="url(#lens_grad)" stroke="#EFB8C8" stroke-width="6" />
+
+            <!-- Left side of lens (Simulated BEFORE: Blurry / Normal) -->
+            <g transform="translate(480, 525) scale(2.8)" opacity="0.45" clip-path="polygon(-150 -150, 0 -150, 0 150, -150 150)">
+                <text x="0" y="-30" font-family="'Inter', sans-serif" font-weight="500" font-size="15" fill="#FFFFFF" text-anchor="middle">A kép élesítés</text>
+                <text x="0" y="5" font-family="'Inter', sans-serif" font-weight="400" font-size="11" fill="#FFFFFF" text-anchor="middle">nélkül elmosódott</text>
+                <text x="0" y="35" font-family="'Inter', sans-serif" font-weight="300" font-size="9" fill="#938F99" text-anchor="middle">szöveget adhat.</text>
+            </g>
+            
+            <!-- Right side of lens (Simulated AFTER: Ultra-Sharp, Crisp outline) -->
+            <!-- We display incredibly crisp, high-contrast text to represent sharpening -->
+            <g transform="translate(480, 525) scale(2.8)" clip-path="polygon(0 -150, 150 -150, 150 150, 0 150)">
+                <text x="0" y="-30" font-family="'Inter', sans-serif" font-weight="900" font-size="15" fill="#EFB8C8" text-anchor="middle">Képélesítéssel</text>
+                <text x="0" y="5" font-family="'Inter', sans-serif" font-weight="800" font-size="11" fill="#FFFFFF" text-anchor="middle">a legkisebb betű is</text>
+                <text x="0" y="35" font-family="'Inter', sans-serif" font-weight="700" font-size="9" fill="#00FFCC" text-anchor="middle">tökéletesen olvasható!</text>
+            </g>
+
+            <!-- Vertical dividing slider comparison line -->
+            <line x1="480" y1="145" x2="480" y2="905" stroke="#FFFFFF" stroke-opacity="0.8" stroke-width="2.5" stroke-dasharray="12 8" />
+            <rect x="415" y="500" width="130" height="50" rx="25" fill="#14111E" stroke="#FFFFFF" stroke-width="2" />
+            <text x="480" y="531" font-family="'Inter', sans-serif" font-weight="700" font-size="14" fill="#FFFFFF" text-anchor="middle">ÉLESÍTÉS</text>
+
+            <!-- Before/After label annotations -->
+            <text x="250" y="240" font-family="'Inter', sans-serif" font-weight="700" font-size="18" fill="#938F99" opacity="0.8">ELŐTTE (Elmosódott)</text>
+            <text x="710" y="240" font-family="'Inter', sans-serif" font-weight="700" font-size="18" fill="#D0BCFF">UTÁNA (Szuper-éles)</text>
+
+            <!-- Exposure factor HUD badge -->
+            <rect x="40" y="40" width="220" height="50" rx="25" fill="#0F0926" fill-opacity="0.8" stroke="#D0BCFF" stroke-opacity="0.4" stroke-width="2" />
+            <text x="150" y="72" class="hud-badge" text-anchor="middle">ÉLESSÉG: 1.5x</text>
+        </g>
+    </g>
+
+    <!-- 3. CAMERA QUICK ACTIONS OVERLAY -->
+    <g transform="translate(60, 1315)">
+        <!-- Flashlight (Off) -->
+        <g transform="translate(140, 0)">
+            <circle cx="40" cy="40" r="40" fill="#25212E" stroke="#D0BCFF" stroke-opacity="0.2" stroke-width="2" />
+            <path d="M40,20 L27,43 L38,43 L35,60 L51,35 L40,35 Z" fill="#938F99" />
+        </g>
+
+        <!-- Freeze Frame Button -->
+        <g transform="translate(390, -15)">
+            <circle cx="55" cy="55" r="55" fill="url(#primary_grad)" />
+            <rect x="42" y="35" width="10" height="40" rx="3" fill="#1B1A21" />
+            <rect x="58" y="35" width="10" height="40" rx="3" fill="#1B1A21" />
+        </g>
+
+        <!-- Save Button -->
+        <g transform="translate(660, 0)">
+            <circle cx="40" cy="40" r="40" fill="#25212E" stroke="#D0BCFF" stroke-opacity="0.2" stroke-width="2" />
+            <path d="M40,25 L40,48 M32,40 L40,48 L48,40 M28,55 L52,55" fill="none" stroke="#D0BCFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+        </g>
+    </g>
+
+    <!-- 4. CONTROLS CONTAINER (Correction Sliders with newly built Sharpening Slider highlighted) -->
+    <g transform="translate(60, 1420)">
+        <rect width="960" height="300" rx="32" fill="#14111E" stroke="#D0BCFF" stroke-opacity="0.15" stroke-width="2" />
+
+        <!-- Slider 1: Kép élesítése (Sharpening) - Selected/Highlighted -->
+        <g transform="translate(50, 30)">
+            <!-- Icon and labels -->
+            <path d="M15,10 A 5,5 0 1,1 25,10 A 5,5 0 1,1 15,10 M 23,15 L 30,22" fill="none" stroke="#D0BCFF" stroke-width="2" />
+            <text x="40" y="16" class="slider-label" font-weight="700" fill="#FFFFFF">Kép élesítése (Sharpening)</text>
+            <text x="860" y="16" class="slider-value">1.5x</text>
+            <!-- Slider Line -->
+            <g transform="translate(0, 30)">
+                <rect width="860" height="8" rx="4" fill="#25212E" />
+                <rect width="645" height="8" rx="4" fill="url(#primary_grad)" />
+                <circle cx="645" cy="4" r="16" fill="#FFFFFF" />
+                <circle cx="645" cy="4" r="7" fill="#D0BCFF" />
+            </g>
+        </g>
+
+        <!-- Slider 2: Kontraszt (Contrast) -->
+        <g transform="translate(50, 115)">
+            <text x="40" y="16" class="slider-label">Kontraszt (Contrast)</text>
+            <text x="860" y="16" class="slider-value">1.2x</text>
+            <!-- Slider Line -->
+            <g transform="translate(0, 30)">
+                <rect width="860" height="8" rx="4" fill="#25212E" />
+                <rect width="516" height="8" rx="4" fill="#D0BCFF" fill-opacity="0.6" />
+                <circle cx="516" cy="4" r="14" fill="#E6E1E5" />
+            </g>
+        </g>
+
+        <!-- Slider 3: Fényerő (Brightness) -->
+        <g transform="translate(50, 200)">
+            <text x="40" y="16" class="slider-label">Fényerő (Brightness)</text>
+            <text x="860" y="16" class="slider-value">Módosítatlan</text>
+            <!-- Slider Line -->
+            <g transform="translate(0, 30)">
+                <rect width="860" height="8" rx="4" fill="#25212E" />
+                <rect width="430" height="8" rx="4" fill="#D0BCFF" fill-opacity="0.6" />
+                <circle cx="430" cy="4" r="14" fill="#E6E1E5" />
+            </g>
+        </g>
+    </g>
+
+    <!-- 5. COMPACT PILL-SHAPED TAB ROW NAVIGATION -->
+    <g transform="translate(60, 1740)">
+        <rect width="960" height="90" rx="45" fill="#14111E" stroke="#D0BCFF" stroke-opacity="0.1" stroke-width="2" />
+
+        <!-- Tab 0 (Unselected: Nagyítás) -->
+        <g transform="translate(10, 10)">
+            <path d="M90,35 A 8,8 0 1,1 106,35 A 8,8 0 1,1 90,35 M102,41 L112,51" fill="none" stroke="#938F99" stroke-width="2.5" stroke-linecap="round" />
+            <text x="125" y="42" class="label-unselected">NAGYÍTÁS</text>
+        </g>
+
+        <!-- Tab 1 (Unselected: Szűrők) -->
+        <g transform="translate(250, 10)">
+            <circle cx="85" cy="35" r="10" fill="none" stroke="#938F99" stroke-width="2.5" />
+            <circle cx="95" cy="42" r="10" fill="none" stroke="#938F99" stroke-width="2.5" />
+            <circle cx="75" cy="42" r="10" fill="none" stroke="#938F99" stroke-width="2.5" />
+            <text x="115" y="42" class="label-unselected">SZŰRŐK</text>
+        </g>
+
+        <!-- Tab 2 (Selected: Korrekció) -->
+        <g transform="translate(490, 10)">
+            <rect width="220" height="70" rx="35" fill="url(#tab_selected_grad)" stroke="#D0BCFF" stroke-opacity="0.3" stroke-width="1.5" />
+            <!-- Tune Icon -->
+            <path d="M75,25 L75,45 M70,30 L80,30 M95,25 L95,45 M90,40 L100,40 M85,35 L105,35" fill="none" stroke="#D0BCFF" stroke-width="3" stroke-linecap="round" />
+            <text x="115" y="42" class="label-selected">KORREKCIÓ</text>
+        </g>
+
+        <!-- Tab 3 (Unselected: Téma) -->
+        <g transform="translate(730, 10)">
+            <path d="M80,45 C75,45 70,40 70,35 C70,25 90,20 90,20 C90,20 100,30 100,35 C100,40 95,45 90,45 Z" fill="none" stroke="#938F99" stroke-width="2.5" />
+            <text x="115" y="42" class="label-unselected">TÉMA</text>
+        </g>
+    </g>
+</svg>

@@ -318,9 +318,34 @@ fun MagnifierMainScreen() {
     var minExposureIndex by remember { mutableStateOf(-4) }
     var maxExposureIndex by remember { mutableStateOf(4) }
 
-    // Freeze Frame state
+    // Freeze Frame and UI processing state
+    var isProcessing by remember { mutableStateOf(false) }
     var isFrozen by remember { mutableStateOf(false) }
+    var rawFrozenBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var frozenBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var sharpenStrength by remember { mutableStateOf(0.8f) } // 0.0f (Off) to 2.0f (Very Strong)
+    var liveSharpenedBitmap by remember { mutableStateOf<Bitmap?>(null) }
+
+    // Background processing to sharpen frozen image asynchronously
+    LaunchedEffect(rawFrozenBitmap, sharpenStrength) {
+        val raw = rawFrozenBitmap
+        if (raw != null) {
+            isProcessing = true
+            withContext(Dispatchers.Default) {
+                val sharpened = if (sharpenStrength > 0.0f) {
+                    sharpenBitmap(raw, strength = sharpenStrength)
+                } else {
+                    raw
+                }
+                withContext(Dispatchers.Main) {
+                    frozenBitmap = sharpened
+                    isProcessing = false
+                }
+            }
+        } else {
+            frozenBitmap = null
+        }
+    }
 
     // Image enhancements (primarily applied on frozen frame for visual aid)
     var contrast by remember { mutableStateOf(1.0f) } // 1.0f (Normal) to 3.0f (High Contrast)
@@ -337,21 +362,29 @@ fun MagnifierMainScreen() {
     var toastSubIcon by remember { mutableStateOf<androidx.compose.ui.graphics.vector.ImageVector?>(null) }
     var toastColor by remember { mutableStateOf(Color(0xFF10B981)) }
     var showSavedToast by remember { mutableStateOf(false) }
-    var isProcessing by remember { mutableStateOf(false) }
     var controlsVisible by remember { mutableStateOf(true) }
 
     // Viewfinder and layout states
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var liveThumbnailBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
-    // Grab thumbnail dynamically when digital zoom is active in live mode
-    LaunchedEffect(extraDigitalZoom > 1.0f) {
+    // Grab thumbnail dynamically and generate sharpened live overlay when digital zoom is active in live mode
+    LaunchedEffect(extraDigitalZoom > 1.0f, sharpenStrength) {
         if (extraDigitalZoom > 1.0f) {
             while (true) {
                 try {
                     val bmp = previewView.bitmap
                     if (bmp != null) {
                         liveThumbnailBitmap = bmp
+                        // Process sharpening asynchronously in background thread to avoid UI block
+                        val sharpened = withContext(Dispatchers.Default) {
+                            if (sharpenStrength > 0.0f) {
+                                sharpenBitmap(bmp, strength = sharpenStrength)
+                            } else {
+                                bmp
+                            }
+                        }
+                        liveSharpenedBitmap = sharpened
                     }
                 } catch (e: Throwable) {
                     // ignore errors fetching bitmap
@@ -360,6 +393,7 @@ fun MagnifierMainScreen() {
             }
         } else {
             liveThumbnailBitmap = null
+            liveSharpenedBitmap = null
         }
     }
 
@@ -603,6 +637,23 @@ fun MagnifierMainScreen() {
                                     translationY = extraDigitalPan.y
                                 }
                         )
+
+                        // Real-time background sharpened image overlay during digital zoom
+                        liveSharpenedBitmap?.let { bmp ->
+                            Image(
+                                bitmap = bmp.asImageBitmap(),
+                                contentDescription = "Live Sharpened Zoom Preview",
+                                contentScale = ContentScale.FillBounds,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        scaleX = extraDigitalZoom
+                                        scaleY = extraDigitalZoom
+                                        translationX = extraDigitalPan.x
+                                        translationY = extraDigitalPan.y
+                                    }
+                            )
+                        }
 
                         // Overlay to apply live reading aid filter dynamically
                         if (filterMode == FilterMode.INVERTED) {
@@ -1273,6 +1324,63 @@ fun MagnifierMainScreen() {
                                             )
                                         }
                                     }
+
+                                    // Dynamic Sharpening Strength Slider (available for both live digital zoom and frozen images)
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Memory,
+                                                contentDescription = "Élesítés",
+                                                tint = themeColor,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Text(
+                                                text = "Kép élesítése (Sharpening)",
+                                                color = Color.White,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                        Text(
+                                            text = if (sharpenStrength == 0.0f) "Ki" else String.format("%.1fx", sharpenStrength),
+                                            color = Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Exposure,
+                                            contentDescription = "Sharpen strength icon",
+                                            tint = Color(0xFFE6E1E5).copy(alpha = 0.5f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Slider(
+                                            value = sharpenStrength,
+                                            onValueChange = { sharpenStrength = it },
+                                            valueRange = 0.0f..2.0f,
+                                            colors = SliderDefaults.colors(
+                                                activeTrackColor = themeColor,
+                                                thumbColor = themeColor,
+                                                inactiveTrackColor = Color(0xFF1B1A21)
+                                            ),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .testTag("sharpen_strength_slider")
+                                        )
+                                    }
                                 }
                             }
                             3 -> { // THEMES TAB
@@ -1391,7 +1499,12 @@ fun MagnifierMainScreen() {
                                     if (rawBitmap != null) {
                                         isProcessing = true
                                         coroutineScope.launch(Dispatchers.IO) {
-                                            val filteredBitmap = applyColorFilterToBitmap(rawBitmap, filterMode, contrast, brightness)
+                                            val processedBitmap = if (!isFrozen && extraDigitalZoom > 1.0f && sharpenStrength > 0.0f) {
+                                                sharpenBitmap(rawBitmap, strength = sharpenStrength)
+                                            } else {
+                                                rawBitmap
+                                            }
+                                            val filteredBitmap = applyColorFilterToBitmap(processedBitmap, filterMode, contrast, brightness)
                                             val savedUri = saveBitmapToGallery(context, filteredBitmap)
                                             withContext(Dispatchers.Main) {
                                                 isProcessing = false
@@ -1444,14 +1557,14 @@ fun MagnifierMainScreen() {
                                     .clickable {
                                         if (isFrozen) {
                                             isFrozen = false
-                                            frozenBitmap = null
+                                            rawFrozenBitmap = null
                                             frozenScale = 1.0f
                                             frozenOffset = Offset.Zero
                                         } else {
                                             isProcessing = true
                                             val bmp = previewView.bitmap
                                             if (bmp != null) {
-                                                frozenBitmap = bmp
+                                                rawFrozenBitmap = bmp
                                                 isFrozen = true
                                                 // Transfer current extra digital zoom and pan seamlessly to the frozen frame view
                                                 frozenScale = extraDigitalZoom
@@ -1492,7 +1605,12 @@ fun MagnifierMainScreen() {
                                     if (rawBitmap != null) {
                                         isProcessing = true
                                         coroutineScope.launch(Dispatchers.IO) {
-                                            val filteredBitmap = applyColorFilterToBitmap(rawBitmap, filterMode, contrast, brightness)
+                                            val processedBitmap = if (!isFrozen && extraDigitalZoom > 1.0f && sharpenStrength > 0.0f) {
+                                                sharpenBitmap(rawBitmap, strength = sharpenStrength)
+                                            } else {
+                                                rawBitmap
+                                            }
+                                            val filteredBitmap = applyColorFilterToBitmap(processedBitmap, filterMode, contrast, brightness)
                                             withContext(Dispatchers.Main) {
                                                 isProcessing = false
                                                 shareBitmap(context, filteredBitmap)
@@ -1683,6 +1801,77 @@ fun applyColorFilterToBitmap(source: Bitmap, filterMode: FilterMode, contrast: F
     paint.colorFilter = android.graphics.ColorMatrixColorFilter(values)
     canvas.drawBitmap(source, 0f, 0f, paint)
     return resultBitmap
+}
+
+// Highly optimized custom 3x3 convolution sharpening filter in Kotlin
+fun sharpenBitmap(src: android.graphics.Bitmap, strength: Float = 0.8f): android.graphics.Bitmap {
+    val width = src.width
+    val height = src.height
+    if (width <= 2 || height <= 2) return src
+
+    val pixels = IntArray(width * height)
+    src.getPixels(pixels, 0, width, 0, 0, width, height)
+    val outPixels = IntArray(width * height)
+
+    // Copy edge pixels as fallback
+    System.arraycopy(pixels, 0, outPixels, 0, pixels.size)
+
+    // Calculate kernel weights based on strength
+    val centerWeight = 1f + 4f * strength
+    val neighborWeight = -strength
+
+    for (y in 1 until height - 1) {
+        val row = y * width
+        val prevRow = row - width
+        val nextRow = row + width
+        for (x in 1 until width - 1) {
+            val idx = row + x
+            val center = pixels[idx]
+            val top = pixels[prevRow + x]
+            val bottom = pixels[nextRow + x]
+            val left = pixels[idx - 1]
+            val right = pixels[idx + 1]
+
+            // Center channels
+            val cA = (center ushr 24) and 0xFF
+            val cR = (center ushr 16) and 0xFF
+            val cG = (center ushr 8) and 0xFF
+            val cB = center and 0xFF
+
+            // Neighbor channels
+            val tR = (top ushr 16) and 0xFF
+            val tG = (top ushr 8) and 0xFF
+            val tB = top and 0xFF
+
+            val bR = (bottom ushr 16) and 0xFF
+            val bG = (bottom ushr 8) and 0xFF
+            val bB = bottom and 0xFF
+
+            val lR = (left ushr 16) and 0xFF
+            val lG = (left ushr 8) and 0xFF
+            val lB = left and 0xFF
+
+            val rR = (right ushr 16) and 0xFF
+            val rG = (right ushr 8) and 0xFF
+            val rB = right and 0xFF
+
+            // Apply kernel weights
+            var r = (centerWeight * cR + neighborWeight * (tR + bR + lR + rR)).toInt()
+            var g = (centerWeight * cG + neighborWeight * (tG + bG + lG + rG)).toInt()
+            var b = (centerWeight * cB + neighborWeight * (tB + bB + lB + rB)).toInt()
+
+            // Clamp channels to [0..255]
+            if (r < 0) r = 0 else if (r > 255) r = 255
+            if (g < 0) g = 0 else if (g > 255) g = 255
+            if (b < 0) b = 0 else if (b > 255) b = 255
+
+            outPixels[idx] = (cA shl 24) or (r shl 16) or (g shl 8) or b
+        }
+    }
+
+    val result = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+    result.setPixels(outPixels, 0, width, 0, 0, width, height)
+    return result
 }
 
 // Helper to save Bitmap to the Device's Public/Scoped Gallery

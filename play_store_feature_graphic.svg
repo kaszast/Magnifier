@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 500" width="1024" height="500">
+    <defs>
+        <!-- Background Gradient matching the app's premium deep cosmic plum/indigo theme -->
+        <linearGradient id="bg_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0F0926" />
+            <stop offset="40%" stop-color="#1A103C" />
+            <stop offset="80%" stop-color="#2D1342" />
+            <stop offset="100%" stop-color="#45123E" />
+        </linearGradient>
+
+        <!-- Dynamic glowing orbs in the background -->
+        <radialGradient id="glow_purple" cx="800" cy="250" r="280" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#D0BCFF" stop-opacity="0.25" />
+            <stop offset="50%" stop-color="#6650a4" stop-opacity="0.08" />
+            <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+        </radialGradient>
+        
+        <radialGradient id="glow_pink" cx="200" cy="400" r="250" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#EFB8C8" stop-opacity="0.15" />
+            <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+        </radialGradient>
+
+        <!-- Magnifier Bezel Gradient (Iridescent look) -->
+        <linearGradient id="bezel_grad" x1="680" y1="110" x2="840" y2="270" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FFFFFF" />
+            <stop offset="30%" stop-color="#D0BCFF" />
+            <stop offset="70%" stop-color="#EFB8C8" />
+            <stop offset="100%" stop-color="#6650a4" />
+        </linearGradient>
+
+        <!-- Magnifier Handle Gradient -->
+        <linearGradient id="handle_grad" x1="820" y1="250" x2="930" y2="360" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#D0BCFF" />
+            <stop offset="40%" stop-color="#6650a4" />
+            <stop offset="100%" stop-color="#1A103C" />
+        </linearGradient>
+
+        <!-- Glass Lens Gradient -->
+        <linearGradient id="glass_grad" x1="690" y1="120" x2="830" y2="260" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#D0BCFF" stop-opacity="0.3" />
+            <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.05" />
+            <stop offset="100%" stop-color="#000000" stop-opacity="0.15" />
+        </linearGradient>
+
+        <style>
+            .title-hu { font-family: 'Montserrat', 'Inter', 'Segoe UI', sans-serif; font-weight: 900; font-size: 68px; fill: #FFFFFF; letter-spacing: -1.5px; }
+            .title-en { font-family: 'Montserrat', 'Inter', 'Segoe UI', sans-serif; font-weight: 500; font-size: 26px; fill: #D0BCFF; letter-spacing: 4px; }
+            .badge-text { font-family: 'Inter', 'Segoe UI', sans-serif; font-weight: 700; font-size: 13px; fill: #EFB8C8; letter-spacing: 1.5px; }
+            .feature-text { font-family: 'Inter', 'Segoe UI', sans-serif; font-weight: 500; font-size: 16px; fill: #E6E1E5; }
+            .feature-bold { font-weight: 700; fill: #FFFFFF; }
+            .caption { font-family: 'Inter', 'Segoe UI', sans-serif; font-style: italic; font-size: 13px; fill: #938F99; }
+        </style>
+    </defs>
+
+    <!-- 1. Background -->
+    <rect width="1024" height="500" fill="url(#bg_grad)" />
+
+    <!-- 2. Tech Grid overlay for precision look -->
+    <path d="M64,0 L64,500 M128,0 L128,500 M192,0 L192,500 M256,0 L256,500 M320,0 L320,500 M384,0 L384,500 M448,0 L448,500 M512,0 L512,500 M576,0 L576,500 M640,0 L640,500 M704,0 L704,500 M768,0 L768,500 M832,0 L832,500 M896,0 L896,500 M960,0 L960,500 M0,64 L1024,64 M0,128 L1024,128 M0,192 L1024,192 M0,256 L1024,256 M0,320 L1024,320 M0,384 L1024,384 M0,448 L1024,448" 
+          fill="none" stroke="#FFFFFF" stroke-opacity="0.04" stroke-width="0.8" />
+
+    <!-- Decorative subtle diagonal speed lines -->
+    <path d="M-100,500 L500,-100 M200,600 L800,0 M400,600 L1000,0" fill="none" stroke="#D0BCFF" stroke-opacity="0.05" stroke-width="1.5" />
+
+    <!-- 3. Ambient Glows -->
+    <circle cx="760" cy="220" r="280" fill="url(#glow_purple)" />
+    <circle cx="200" cy="400" r="250" fill="url(#glow_pink)" />
+
+    <!-- 4. Left Column: Branding & Text -->
+    <!-- Feature badge -->
+    <rect x="75" y="80" width="180" height="28" rx="14" fill="#6650a4" fill-opacity="0.3" stroke="#D0BCFF" stroke-opacity="0.4" stroke-width="1" />
+    <circle cx="91" cy="94" r="4" fill="#EFB8C8" />
+    <text x="105" y="98" class="badge-text">SMART MAGNIFIER</text>
+
+    <!-- Main App Title -->
+    <text x="70" y="175" class="title-hu">NAGYÍTÓ</text>
+    <text x="430" y="175" class="title-en">PRO</text>
+    
+    <!-- Accent Line -->
+    <rect x="75" y="200" width="460" height="4" rx="2" fill="none" stroke="url(#bezel_grad)" stroke-width="2" />
+
+    <!-- Subtitle/Slogan -->
+    <text x="75" y="235" font-family="'Inter', sans-serif" font-weight="600" font-size="20" fill="#D0BCFF">Intelligens nagyító és valós idejű képélesítő</text>
+
+    <!-- Bullet list of core capabilities (Bilingual visual cue) -->
+    <!-- Bullet 1 -->
+    <g transform="translate(75, 275)">
+        <circle cx="10" cy="10" r="6" fill="#D0BCFF" />
+        <circle cx="10" cy="10" r="3" fill="#1A103C" />
+        <text x="28" y="15" class="feature-text"><tspan class="feature-bold">Valós idejű élesítés</tspan> / Real-time Sharpening</text>
+    </g>
+    <!-- Bullet 2 -->
+    <g transform="translate(75, 315)">
+        <circle cx="10" cy="10" r="6" fill="#EFB8C8" />
+        <circle cx="10" cy="10" r="3" fill="#1A103C" />
+        <text x="28" y="15" class="feature-text"><tspan class="feature-bold">Kimerevítés &amp; Utómunka</tspan> / Freeze &amp; Fine-tune</text>
+    </g>
+    <!-- Bullet 3 -->
+    <g transform="translate(75, 355)">
+        <circle cx="10" cy="10" r="6" fill="#D0BCFF" />
+        <circle cx="10" cy="10" r="3" fill="#1A103C" />
+        <text x="28" y="15" class="feature-text"><tspan class="feature-bold">Nagy kontrasztú olvasás</tspan> / High-contrast Filters</text>
+    </g>
+    <!-- Bullet 4 -->
+    <g transform="translate(75, 395)">
+        <circle cx="10" cy="10" r="6" fill="#EFB8C8" />
+        <circle cx="10" cy="10" r="3" fill="#1A103C" />
+        <text x="28" y="15" class="feature-text"><tspan class="feature-bold">Fényerő és Expó korrekció</tspan> / Light &amp; Exposure Aid</text>
+    </g>
+
+    <!-- Footer Caption -->
+    <text x="75" y="455" class="caption">Google Play Store Feature Graphic • 1024 x 500 px • Highly Scalable Vector</text>
+
+    <!-- 5. Right Column: Beautiful High-fidelity Magnifier Graphic -->
+    <!-- Shadow for handle and glass -->
+    <line x1="820" y1="250" x2="930" y2="360" stroke="#000000" stroke-opacity="0.4" stroke-width="18" stroke-linecap="round" />
+    <circle cx="760" cy="190" r="95" fill="#000000" fill-opacity="0.3" />
+
+    <!-- Magnifier Handle -->
+    <line x1="815" y1="245" x2="925" y2="355" stroke="url(#handle_grad)" stroke-width="16" stroke-linecap="round" />
+    
+    <!-- Metallic Bezel Connector -->
+    <line x1="810" y1="240" x2="825" y2="255" stroke="#EFB8C8" stroke-width="18" stroke-linecap="square" />
+
+    <!-- Glass Lens Outer Bezel -->
+    <circle cx="750" cy="180" r="95" fill="none" stroke="url(#bezel_grad)" stroke-width="10" />
+
+    <!-- Glass Lens Inner Reflection Fill -->
+    <circle cx="750" cy="180" r="90" fill="url(#glass_grad)" />
+
+    <!-- Lens visual target/grid crosshair overlay inside the magnifier -->
+    <path d="M750,110 L750,130 M750,230 L750,250 M680,180 L700,180 M800,180 L820,180" fill="none" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="2" />
+    <circle cx="750" cy="180" r="40" fill="none" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="1.5" />
+
+    <!-- Curved Reflection highlights on the lens -->
+    <!-- Top-Left Reflection Crescent -->
+    <path d="M 685,180 A 65,65 0 0,1 750,115" fill="none" stroke="#FFFFFF" stroke-opacity="0.75" stroke-width="4.5" stroke-linecap="round" />
+    <!-- Bottom-Right Soft Reflection -->
+    <path d="M 815,180 A 65,65 0 0,1 750,245" fill="none" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="2" stroke-linecap="round" />
+
+    <!-- Little glowing glint star on the bezel rim -->
+    <path d="M 680,110 L 680,122 M 674,116 L 686,116" stroke="#FFFFFF" stroke-opacity="0.9" stroke-width="2.5" />
+    <circle cx="680" cy="116" r="2" fill="#FFFFFF" />
+</svg>
