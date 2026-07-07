@@ -361,6 +361,14 @@ fun PermissionRequiredScreen(onRequestPermission: () -> Unit) {
 @Composable
 fun MagnifierMainScreen() {
     val context = LocalContext.current
+    val appVersion = remember {
+        try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            pInfo.versionName ?: "23.0"
+        } catch (e: Exception) {
+            "23.0"
+        }
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -416,7 +424,7 @@ fun MagnifierMainScreen() {
     var isFrozen by remember { mutableStateOf(false) }
     var rawFrozenBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var frozenBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var sharpenStrength by remember { mutableStateOf(0.8f) } // 0.0f (Off) to 2.0f (Very Strong)
+    var sharpenStrength by remember { mutableStateOf(0.0f) } // 0.0f (Off) to 2.0f (Very Strong)
     var liveSharpenedBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
     // Background processing to sharpen frozen image asynchronously
@@ -800,8 +808,11 @@ fun MagnifierMainScreen() {
                                         if (zoom != 1f) {
                                             // Seamless unified zoom logic
                                             val currentZoom = liveZoomRatio * extraDigitalZoom
-                                            val newZoom = (currentZoom * zoom).coerceIn(minZoom, maxZoom * 6.0f)
-                                            if (newZoom <= maxZoom) {
+                                            val newZoom = (currentZoom * zoom).coerceIn(0.5f, maxZoom * 6.0f)
+                                            if (newZoom < minZoom) {
+                                                liveZoomRatio = minZoom
+                                                extraDigitalZoom = newZoom / minZoom
+                                            } else if (newZoom <= maxZoom) {
                                                 liveZoomRatio = newZoom
                                                 extraDigitalZoom = 1.0f
                                                 extraDigitalPan = Offset.Zero
@@ -829,13 +840,17 @@ fun MagnifierMainScreen() {
                                 .pointerInput(Unit) {
                                     detectTapGestures(
                                         onDoubleTap = {
-                                            if (extraDigitalZoom > 1.0f || liveZoomRatio > minZoom) {
+                                            val currentZoom = liveZoomRatio * extraDigitalZoom
+                                            if (Math.abs(currentZoom - 1.0f) > 0.05f) {
                                                 extraDigitalZoom = 1.0f
                                                 extraDigitalPan = Offset.Zero
-                                                liveZoomRatio = minZoom
+                                                liveZoomRatio = 1.0f.coerceIn(minZoom, maxZoom)
                                             } else {
                                                 val targetZoom = (minZoom + maxZoom) / 2.0f
-                                                if (targetZoom <= maxZoom) {
+                                                if (targetZoom < minZoom) {
+                                                    liveZoomRatio = minZoom
+                                                    extraDigitalZoom = targetZoom / minZoom
+                                                } else if (targetZoom <= maxZoom) {
                                                     liveZoomRatio = targetZoom
                                                     extraDigitalZoom = 1.0f
                                                 } else {
@@ -872,7 +887,7 @@ fun MagnifierMainScreen() {
                             .fillMaxSize()
                             .pointerInput(Unit) {
                                 detectTransformGestures { _, pan, zoom, _ ->
-                                    frozenScale = (frozenScale * zoom).coerceIn(1.0f, 10.0f)
+                                    frozenScale = (frozenScale * zoom).coerceIn(0.5f, 10.0f)
                                     if (frozenScale > 1.0f) {
                                         frozenOffset += pan
                                         val maxPanX = (frozenScale - 1.0f) * 500f
@@ -1162,6 +1177,12 @@ fun MagnifierMainScreen() {
                                                 tint = themeColor,
                                                 modifier = Modifier.size(18.dp)
                                             )
+                                            Text(
+                                                text = "v$appVersion",
+                                                color = themeColor,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
                                             if (isDigitalRange) {
                                                 Box(
                                                     modifier = Modifier
@@ -1177,13 +1198,6 @@ fun MagnifierMainScreen() {
                                                 }
                                             }
                                         }
-                                        
-                                        Text(
-                                            text = String.format("%.1fx", currentTotalZoom),
-                                            color = Color.White,
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Black
-                                        )
                                     }
 
                                     Row(
@@ -1198,10 +1212,14 @@ fun MagnifierMainScreen() {
                                                 .border(1.dp, Color(0xFF2E2C33), CircleShape)
                                                 .clickable {
                                                     if (isFrozen) {
-                                                        frozenScale = max(1.0f, frozenScale - 0.5f)
+                                                        frozenScale = max(0.5f, frozenScale - 0.5f)
                                                     } else {
-                                                        val targetZoom = max(minZoom, (liveZoomRatio * extraDigitalZoom) - 0.5f)
-                                                        if (targetZoom <= maxZoom) {
+                                                        val targetZoom = max(0.5f, (liveZoomRatio * extraDigitalZoom) - 0.5f)
+                                                        if (targetZoom < minZoom) {
+                                                            liveZoomRatio = minZoom
+                                                            extraDigitalZoom = targetZoom / minZoom
+                                                            extraDigitalPan = Offset.Zero
+                                                        } else if (targetZoom <= maxZoom) {
                                                             liveZoomRatio = targetZoom
                                                             extraDigitalZoom = 1.0f
                                                             extraDigitalPan = Offset.Zero
@@ -1227,7 +1245,10 @@ fun MagnifierMainScreen() {
                                                 if (isFrozen) {
                                                     frozenScale = newValue
                                                 } else {
-                                                    if (newValue <= maxZoom) {
+                                                    if (newValue < minZoom) {
+                                                        liveZoomRatio = minZoom
+                                                        extraDigitalZoom = newValue / minZoom
+                                                    } else if (newValue <= maxZoom) {
                                                         liveZoomRatio = newValue
                                                         extraDigitalZoom = 1.0f
                                                         extraDigitalPan = Offset.Zero
@@ -1237,7 +1258,7 @@ fun MagnifierMainScreen() {
                                                     }
                                                 }
                                             },
-                                            valueRange = if (isFrozen) 1.0f..10.0f else minZoom..(maxZoom * 6.0f),
+                                            valueRange = if (isFrozen) 0.5f..10.0f else 0.5f..(maxZoom * 6.0f),
                                             colors = SliderDefaults.colors(
                                                 activeTrackColor = themeColor,
                                                 thumbColor = themeColor,
@@ -1258,7 +1279,10 @@ fun MagnifierMainScreen() {
                                                         frozenScale = min(10.0f, frozenScale + 0.5f)
                                                     } else {
                                                         val targetZoom = min(maxZoom * 6.0f, (liveZoomRatio * extraDigitalZoom) + 0.5f)
-                                                        if (targetZoom <= maxZoom) {
+                                                        if (targetZoom < minZoom) {
+                                                            liveZoomRatio = minZoom
+                                                            extraDigitalZoom = targetZoom / minZoom
+                                                        } else if (targetZoom <= maxZoom) {
                                                             liveZoomRatio = targetZoom
                                                             extraDigitalZoom = 1.0f
                                                         } else {
@@ -1276,6 +1300,14 @@ fun MagnifierMainScreen() {
                                                 modifier = Modifier.size(18.dp)
                                             )
                                         }
+                                        Text(
+                                            text = String.format("%.1fx", currentTotalZoom),
+                                            color = Color.White,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Black,
+                                            modifier = Modifier.widthIn(min = 55.dp),
+                                            textAlign = TextAlign.End
+                                        )
                                     }
 
                                     // Quick Presets
@@ -1284,7 +1316,7 @@ fun MagnifierMainScreen() {
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        val presets = listOf(1.0f, 2.0f, 4.0f, 8.0f, 12.0f, 16.0f)
+                                        val presets = listOf(0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 12.0f, 16.0f)
                                         presets.forEach { preset ->
                                             val isSelected = if (isFrozen) {
                                                 abs(frozenScale - preset) < 0.15f
@@ -1307,7 +1339,11 @@ fun MagnifierMainScreen() {
                                                             if (isFrozen) {
                                                                 frozenScale = preset
                                                             } else {
-                                                                if (preset <= maxZoom) {
+                                                                if (preset < minZoom) {
+                                                                    liveZoomRatio = minZoom
+                                                                    extraDigitalZoom = preset / minZoom
+                                                                    extraDigitalPan = Offset.Zero
+                                                                } else if (preset <= maxZoom) {
                                                                     liveZoomRatio = preset.coerceIn(minZoom, maxZoom)
                                                                     extraDigitalZoom = 1.0f
                                                                     extraDigitalPan = Offset.Zero
@@ -1322,7 +1358,7 @@ fun MagnifierMainScreen() {
                                                     contentAlignment = Alignment.Center
                                                 ) {
                                                     Text(
-                                                        text = String.format("%.0fx", preset),
+                                                        text = if (preset % 1.0f == 0.0f) String.format("%.0fx", preset) else String.format("%.1fx", preset),
                                                         color = if (isSelected) Color.Black else Color.White,
                                                         fontSize = 11.sp,
                                                         fontWeight = FontWeight.Bold
@@ -1347,6 +1383,12 @@ fun MagnifierMainScreen() {
                                             contentDescription = "Szűrők",
                                             tint = themeColor,
                                             modifier = Modifier.size(16.dp)
+                                        )
+                                        Text(
+                                            text = "v$appVersion",
+                                            color = themeColor,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
                                         )
                                     }
                                     Row(
@@ -1436,18 +1478,23 @@ fun MagnifierMainScreen() {
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(
-                                            imageVector = if (isFrozen) Icons.Default.Contrast else Icons.Default.Exposure,
-                                            contentDescription = "Korrekció",
-                                            tint = themeColor,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Text(
-                                            text = if (isFrozen) String.format("%.1fx", contrast) else "$exposureIndex EV",
-                                            color = Color.White,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = if (isFrozen) Icons.Default.Contrast else Icons.Default.Exposure,
+                                                contentDescription = "Korrekció",
+                                                tint = themeColor,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Text(
+                                                text = "v$appVersion",
+                                                color = themeColor,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
                                     }
                                     
                                     Row(
@@ -1456,10 +1503,10 @@ fun MagnifierMainScreen() {
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.Contrast,
+                                            imageVector = if (isFrozen) Icons.Default.Contrast else Icons.Default.Exposure,
                                             contentDescription = "Contrast icon",
-                                            tint = Color(0xFFE6E1E5).copy(alpha = 0.5f),
-                                            modifier = Modifier.size(16.dp)
+                                            tint = themeColor,
+                                            modifier = Modifier.size(18.dp)
                                         )
                                         Slider(
                                             value = if (isFrozen) contrast else exposureIndex.toFloat(),
@@ -1479,27 +1526,17 @@ fun MagnifierMainScreen() {
                                             ),
                                             modifier = Modifier.weight(1f)
                                         )
+                                        Text(
+                                            text = if (isFrozen) String.format("%.1fx", contrast) else "$exposureIndex EV",
+                                            color = Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.widthIn(min = 55.dp),
+                                            textAlign = TextAlign.End
+                                        )
                                     }
 
                                     if (isFrozen) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.LightMode,
-                                                contentDescription = "Fényerő",
-                                                tint = themeColor,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                            Text(
-                                                text = String.format("%+d", brightness.roundToInt()),
-                                                color = Color.White,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
                                             verticalAlignment = Alignment.CenterVertically,
@@ -1508,8 +1545,8 @@ fun MagnifierMainScreen() {
                                             Icon(
                                                 imageVector = Icons.Default.LightMode,
                                                 contentDescription = "Brightness icon",
-                                                tint = Color(0xFFE6E1E5).copy(alpha = 0.5f),
-                                                modifier = Modifier.size(16.dp)
+                                                tint = themeColor,
+                                                modifier = Modifier.size(18.dp)
                                             )
                                             Slider(
                                                 value = brightness,
@@ -1522,6 +1559,14 @@ fun MagnifierMainScreen() {
                                                 ),
                                                 modifier = Modifier.weight(1f)
                                             )
+                                            Text(
+                                                text = String.format("%+d", brightness.roundToInt()),
+                                                color = Color.White,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.widthIn(min = 55.dp),
+                                                textAlign = TextAlign.End
+                                            )
                                         }
                                     }
 
@@ -1529,48 +1574,19 @@ fun MagnifierMainScreen() {
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Memory,
-                                                contentDescription = "Élesítés",
-                                                tint = themeColor,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                            Text(
-                                                text = "Kép élesítése (Sharpening)",
-                                                color = Color.White,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                        Text(
-                                            text = if (sharpenStrength == 0.0f) "Ki" else String.format("%.1fx", sharpenStrength),
-                                            color = Color.White,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.Exposure,
+                                            imageVector = Icons.Default.AutoAwesome,
                                             contentDescription = "Sharpen strength icon",
-                                            tint = Color(0xFFE6E1E5).copy(alpha = 0.5f),
-                                            modifier = Modifier.size(16.dp)
+                                            tint = themeColor,
+                                            modifier = Modifier.size(18.dp)
                                         )
                                         Slider(
                                             value = sharpenStrength,
                                             onValueChange = { sharpenStrength = it },
-                                            valueRange = 0.0f..2.0f,
+                                            valueRange = 0.0f..10.0f,
                                             colors = SliderDefaults.colors(
                                                 activeTrackColor = themeColor,
                                                 thumbColor = themeColor,
@@ -1579,6 +1595,14 @@ fun MagnifierMainScreen() {
                                             modifier = Modifier
                                                 .weight(1f)
                                                 .testTag("sharpen_strength_slider")
+                                        )
+                                        Text(
+                                            text = if (sharpenStrength == 0.0f) "0.0" else String.format("%.1fx", sharpenStrength),
+                                            color = Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.widthIn(min = 55.dp),
+                                            textAlign = TextAlign.End
                                         )
                                     }
                                 }
@@ -1597,6 +1621,12 @@ fun MagnifierMainScreen() {
                                             contentDescription = "Téma",
                                             tint = themeColor,
                                             modifier = Modifier.size(16.dp)
+                                        )
+                                        Text(
+                                            text = "v$appVersion",
+                                            color = themeColor,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
                                         )
                                     }
                                     Row(
