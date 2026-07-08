@@ -1224,6 +1224,10 @@ fun MagnifierMainScreen() {
                                                     .padding(vertical = 6.dp),
                                                 contentAlignment = Alignment.Center
                                             ) {
+                                                Column(
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                                ) {
                                                 Box(
                                                     modifier = Modifier
                                                         .size(28.dp)
@@ -1272,6 +1276,15 @@ fun MagnifierMainScreen() {
                                                             modifier = Modifier.size(14.dp)
                                                         )
                                                     }
+                                                }
+                                                Text(
+                                                    text = stringResource(mode.labelRes),
+                                                    color = if (selected) themeColor else Color(0xFFA1A1AA),
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    maxLines = 1,
+                                                    textAlign = TextAlign.Center
+                                                )
                                                 }
                                             }
                                         }
@@ -1462,20 +1475,33 @@ fun MagnifierMainScreen() {
                                                     .padding(vertical = 6.dp),
                                                 contentAlignment = Alignment.Center
                                             ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(28.dp)
-                                                        .background(option.color, CircleShape),
-                                                    contentAlignment = Alignment.Center
+                                                Column(
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.spacedBy(4.dp)
                                                 ) {
-                                                    if (selected) {
-                                                        Icon(
-                                                            imageVector = Icons.Default.Check,
-                                                            contentDescription = stringResource(R.string.cd_selected),
-                                                            tint = Color.Black,
-                                                            modifier = Modifier.size(14.dp)
-                                                        )
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(28.dp)
+                                                            .background(option.color, CircleShape),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        if (selected) {
+                                                            Icon(
+                                                                imageVector = Icons.Default.Check,
+                                                                contentDescription = stringResource(R.string.cd_selected),
+                                                                tint = Color.Black,
+                                                                modifier = Modifier.size(14.dp)
+                                                            )
+                                                        }
                                                     }
+                                                    Text(
+                                                        text = stringResource(option.nameRes),
+                                                        color = if (selected) option.color else Color(0xFFA1A1AA),
+                                                        fontSize = 9.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        maxLines = 1,
+                                                        textAlign = TextAlign.Center
+                                                    )
                                                 }
                                             }
                                         }
@@ -1735,12 +1761,24 @@ fun MagnifierMainScreen() {
                                     .testTag("tab_$index"),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = label,
-                                    tint = if (selected) themeColor else Color(0xFFE6E1E5).copy(alpha = 0.5f),
-                                    modifier = Modifier.size(24.dp)
-                                )
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = null,
+                                        tint = if (selected) themeColor else Color(0xFFE6E1E5).copy(alpha = 0.5f),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Text(
+                                        text = label,
+                                        color = if (selected) themeColor else Color(0xFFE6E1E5).copy(alpha = 0.5f),
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1
+                                    )
+                                }
                             }
                         }
                     }
