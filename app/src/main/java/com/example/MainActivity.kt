@@ -39,6 +39,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,6 +67,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.FileProvider
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.theme.MyApplicationTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -107,6 +111,17 @@ enum class FilterMode(val displayName: String, val description: String) {
     YELLOW("Sárga-Fekete", "Gyengénlátóknak ideális kontraszt"),
     RED("Vörös", "Éjszakai látásmegőrzés")
 }
+
+// A kimerevített nyers képkocka nem fér el a savedInstanceState-ben (TransactionTooLargeException),
+// ezért konfigurációváltásnál (pl. forgatás) ViewModel őrzi meg.
+class MagnifierViewModel : ViewModel() {
+    var rawFrozenBitmap by mutableStateOf<Bitmap?>(null)
+}
+
+private val OffsetSaver = listSaver<Offset, Float>(
+    save = { listOf(it.x, it.y) },
+    restore = { Offset(it[0], it[1]) }
+)
 
 fun hasCameraPermission(context: Context): Boolean {
     return androidx.core.content.ContextCompat.checkSelfPermission(
@@ -478,6 +493,7 @@ fun MagnifierMainScreen() {
     }
     val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
+    val magnifierViewModel: MagnifierViewModel = viewModel()
 
     val themeOptions = remember {
         listOf(
@@ -488,7 +504,7 @@ fun MagnifierMainScreen() {
             AppThemeColor("Narancs", Color(0xFFFF6B00))
         )
     }
-    var currentThemeIndex by remember { mutableStateOf(0) }
+    var currentThemeIndex by rememberSaveable { mutableStateOf(0) }
     val themeColor = themeOptions[currentThemeIndex].color
 
     // Camera setup states
@@ -507,28 +523,28 @@ fun MagnifierMainScreen() {
     }
 
     // Interactive states
-    var liveZoomRatio by remember { mutableStateOf(1.0f) }
+    var liveZoomRatio by rememberSaveable { mutableStateOf(1.0f) }
     var minZoom by remember { mutableStateOf(1.0f) }
     var maxZoom by remember { mutableStateOf(8.0f) }
 
     // Multi-camera states
     var availableCameras by remember { mutableStateOf<List<androidx.camera.core.CameraInfo>>(emptyList()) }
-    var selectedCameraIndex by remember { mutableStateOf(0) }
+    var selectedCameraIndex by rememberSaveable { mutableStateOf(0) }
 
     // Additional software digital zoom and pan states for active camera preview
-    var extraDigitalZoom by remember { mutableStateOf(1.0f) }
-    var extraDigitalPan by remember { mutableStateOf(Offset.Zero) }
+    var extraDigitalZoom by rememberSaveable { mutableStateOf(1.0f) }
+    var extraDigitalPan by rememberSaveable(stateSaver = OffsetSaver) { mutableStateOf(Offset.Zero) }
 
-    var torchEnabled by remember { mutableStateOf(false) }
+    var torchEnabled by rememberSaveable { mutableStateOf(false) }
 
     // Exposure (live brightness/contrast adjustment)
-    var exposureIndex by remember { mutableStateOf(0) }
+    var exposureIndex by rememberSaveable { mutableStateOf(0) }
     var minExposureIndex by remember { mutableStateOf(-4) }
     var maxExposureIndex by remember { mutableStateOf(4) }
 
     // Freeze Frame and UI processing state
     var isProcessing by remember { mutableStateOf(false) }
-    var isFrozen by remember { mutableStateOf(false) }
+    var isFrozen by rememberSaveable { mutableStateOf(false) }
 
     val sliderMin by remember(isFrozen, minZoom) {
         derivedStateOf { if (isFrozen) 0.5f else minZoom }
@@ -546,10 +562,18 @@ fun MagnifierMainScreen() {
         }
     }
 
-    var rawFrozenBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var rawFrozenBitmap by magnifierViewModel::rawFrozenBitmap
     var frozenBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var sharpenStrength by remember { mutableStateOf(0.0f) } // 0.0f (Off) to 2.0f (Very Strong)
+    var sharpenStrength by rememberSaveable { mutableStateOf(0.0f) } // 0.0f (Off) to 2.0f (Very Strong)
     var liveSharpenedBitmap by remember { mutableStateOf<Bitmap?>(null) }
+
+    // Process death után a savedInstanceState visszaáll, de a ViewModel-beli bitmap már nincs meg —
+    // ilyenkor vissza élő módba.
+    LaunchedEffect(Unit) {
+        if (isFrozen && rawFrozenBitmap == null) {
+            isFrozen = false
+        }
+    }
 
     // Background processing to sharpen frozen image asynchronously
     LaunchedEffect(rawFrozenBitmap, sharpenStrength) {
@@ -573,93 +597,80 @@ fun MagnifierMainScreen() {
     }
 
     // Image enhancements (primarily applied on frozen frame for visual aid)
-    var contrast by remember { mutableStateOf(1.0f) } // 1.0f (Normal) to 3.0f (High Contrast)
-    var brightness by remember { mutableStateOf(0.0f) } // -100f to 100f
-    var filterMode by remember { mutableStateOf(FilterMode.NORMAL) }
+    var contrast by rememberSaveable { mutableStateOf(1.0f) } // 1.0f (Normal) to 3.0f (High Contrast)
+    var brightness by rememberSaveable { mutableStateOf(0.0f) } // -100f to 100f
+    var filterMode by rememberSaveable { mutableStateOf(FilterMode.NORMAL) }
 
     // Digital Zoom/Pan states for frozen image
-    var frozenScale by remember { mutableStateOf(1.0f) }
-    var frozenOffset by remember { mutableStateOf(Offset.Zero) }
+    var frozenScale by rememberSaveable { mutableStateOf(1.0f) }
+    var frozenOffset by rememberSaveable(stateSaver = OffsetSaver) { mutableStateOf(Offset.Zero) }
+
+    // Viewfinder layout size (a pan-határok és a minimap számításához)
+    var viewportSize by remember { mutableStateOf(IntSize.Zero) }
 
     // Dynamic boundary constraints to prevent pan offsets from drifting when zoom scale is reduced
     LaunchedEffect(extraDigitalZoom) {
-        if (extraDigitalZoom > 1.0f) {
-            val maxPanX = (extraDigitalZoom - 1.0f) * 500f
-            val maxPanY = (extraDigitalZoom - 1.0f) * 800f
-            extraDigitalPan = Offset(
-                x = extraDigitalPan.x.coerceIn(-maxPanX, maxPanX),
-                y = extraDigitalPan.y.coerceIn(-maxPanY, maxPanY)
-            )
-        } else {
-            extraDigitalPan = Offset.Zero
-        }
+        extraDigitalPan = clampPan(extraDigitalPan, extraDigitalZoom, viewportSize)
     }
 
     LaunchedEffect(frozenScale) {
-        if (frozenScale > 1.0f) {
-            val maxPanX = (frozenScale - 1.0f) * 500f
-            val maxPanY = (frozenScale - 1.0f) * 800f
-            frozenOffset = Offset(
-                x = frozenOffset.x.coerceIn(-maxPanX, maxPanX),
-                y = frozenOffset.y.coerceIn(-maxPanY, maxPanY)
-            )
-        } else {
-            frozenOffset = Offset.Zero
-        }
+        frozenOffset = clampPan(frozenOffset, frozenScale, viewportSize)
     }
 
     // UI overlays / status
-    var activeTab by remember { mutableStateOf(0) } // 0: Nagyítás, 1: Szűrők, 2: Képkorrekció
+    var activeTab by rememberSaveable { mutableStateOf(0) } // 0: Nagyítás, 1: Szűrők, 2: Képkorrekció
     var toastIcon by remember { mutableStateOf<androidx.compose.ui.graphics.vector.ImageVector>(Icons.Default.CheckCircle) }
     var toastSubIcon by remember { mutableStateOf<androidx.compose.ui.graphics.vector.ImageVector?>(null) }
     var toastColor by remember { mutableStateOf(Color(0xFF10B981)) }
     var showSavedToast by remember { mutableStateOf(false) }
-    var controlsVisible by remember { mutableStateOf(true) }
+    var controlsVisible by rememberSaveable { mutableStateOf(true) }
 
     // Viewfinder and layout states
-    var viewportSize by remember { mutableStateOf(IntSize.Zero) }
     var liveThumbnailBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
-    // Grab thumbnail dynamically and generate sharpened live overlay when digital zoom is active in live mode
-    LaunchedEffect(extraDigitalZoom > 1.0f, sharpenStrength) {
+    // Grab thumbnail dynamically and generate sharpened live overlay when digital zoom is active in live mode.
+    // Az overlay kizárólag aktív élesítésnél jelenik meg: élesítés nélkül a natív preview
+    // élesebb, mint bármilyen leskálázott bitmap-másolat.
+    LaunchedEffect(extraDigitalZoom > 1.0f) {
         if (extraDigitalZoom > 1.0f) {
             while (true) {
                 try {
                     val bmp = previewView.bitmap
                     if (bmp != null) {
                         liveThumbnailBitmap = bmp
-                        // Process scaling and sharpening asynchronously in background thread to avoid UI block
-                        val sharpened = withContext(Dispatchers.Default) {
-                            // Scale down to a maximum dimension of 540px to ensure ultra-fast processing (<15ms)
-                            val maxDim = 540
-                            val scale = if (bmp.width > maxDim || bmp.height > maxDim) {
-                                maxDim.toFloat() / maxOf(bmp.width, bmp.height).toFloat()
-                            } else {
-                                1.0f
-                            }
-                            
-                            val workingBmp = if (scale < 1.0f) {
-                                val targetW = (bmp.width * scale).toInt().coerceAtLeast(1)
-                                val targetH = (bmp.height * scale).toInt().coerceAtLeast(1)
-                                Bitmap.createScaledBitmap(bmp, targetW, targetH, true)
-                            } else {
-                                bmp
-                            }
+                        val strength = sharpenStrength
+                        if (strength > 0.0f) {
+                            // Process scaling and sharpening asynchronously in background thread to avoid UI block
+                            val sharpened = withContext(Dispatchers.Default) {
+                                // Scale down to a maximum dimension of 540px to ensure ultra-fast processing (<15ms)
+                                val maxDim = 540
+                                val scale = if (bmp.width > maxDim || bmp.height > maxDim) {
+                                    maxDim.toFloat() / maxOf(bmp.width, bmp.height).toFloat()
+                                } else {
+                                    1.0f
+                                }
 
-                            val sharp = if (sharpenStrength > 0.0f) {
-                                sharpenBitmap(workingBmp, strength = sharpenStrength)
-                            } else {
-                                workingBmp
+                                val workingBmp = if (scale < 1.0f) {
+                                    val targetW = (bmp.width * scale).toInt().coerceAtLeast(1)
+                                    val targetH = (bmp.height * scale).toInt().coerceAtLeast(1)
+                                    Bitmap.createScaledBitmap(bmp, targetW, targetH, true)
+                                } else {
+                                    bmp
+                                }
+
+                                val sharp = sharpenBitmap(workingBmp, strength = strength)
+
+                                // Clean up temporary scaled bitmap if created
+                                if (workingBmp != bmp && workingBmp != sharp) {
+                                    workingBmp.recycle()
+                                }
+
+                                sharp
                             }
-                            
-                            // Clean up temporary scaled bitmap if created
-                            if (workingBmp != bmp && workingBmp != sharp) {
-                                workingBmp.recycle()
-                            }
-                            
-                            sharp
+                            liveSharpenedBitmap = sharpened
+                        } else {
+                            liveSharpenedBitmap = null
                         }
-                        liveSharpenedBitmap = sharpened
                     }
                 } catch (e: Throwable) {
                     if (e is kotlinx.coroutines.CancellationException) throw e
@@ -677,52 +688,13 @@ fun MagnifierMainScreen() {
     var focusPoint by remember { mutableStateOf<Offset?>(null) }
     var focusTrigger by remember { mutableStateOf(0) }
 
-    // Helper to calculate combined color filter matrix
+    // A megjelenítés és a mentés ugyanabból a kanonikus mátrixból dolgozik (WYSIWYG)
     val combinedColorFilter = remember(filterMode, contrast, brightness) {
-        val matrix = ColorMatrix()
-        
-        // 1. Apply base accessibility/night filter
-        when (filterMode) {
-            FilterMode.NORMAL -> { /* Keep identity */ }
-            FilterMode.MONOCHROME -> {
-                matrix.setToSaturation(0f)
-            }
-            FilterMode.INVERTED -> {
-                matrix.set(ColorMatrix(floatArrayOf(
-                    -1f, 0f, 0f, 0f, 255f,
-                    0f, -1f, 0f, 0f, 255f,
-                    0f, 0f, -1f, 0f, 255f,
-                    0f, 0f, 0f, 1f, 0f
-                )))
-            }
-            FilterMode.YELLOW -> {
-                matrix.set(ColorMatrix(floatArrayOf(
-                    0.2126f * 1.6f, 0.7152f * 1.6f, 0.0722f * 1.6f, 0f, 0f,
-                    0.2126f * 1.6f, 0.7152f * 1.6f, 0.0722f * 1.6f, 0f, 0f,
-                    0f, 0f, 0f, 0f, 0f,
-                    0f, 0f, 0f, 1f, 0f
-                )))
-            }
-            FilterMode.RED -> {
-                matrix.set(ColorMatrix(floatArrayOf(
-                    0.2126f * 1.8f, 0.7152f * 1.8f, 0.0722f * 1.8f, 0f, 0f,
-                    0f, 0f, 0f, 0f, 0f,
-                    0f, 0f, 0f, 0f, 0f,
-                    0f, 0f, 0f, 1f, 0f
-                )))
-            }
-        }
-
-        // 2. Adjust contrast & brightness directly in color matrix values
-        val values = matrix.values
-        for (i in 0..14) {
-            values[i] = values[i] * contrast
-        }
-        values[4] = values[4] * contrast + brightness
-        values[9] = values[9] * contrast + brightness
-        values[14] = values[14] * contrast + brightness
-
-        ColorFilter.colorMatrix(ColorMatrix(values))
+        ColorFilter.colorMatrix(ColorMatrix(buildFilterMatrixValues(filterMode, contrast, brightness)))
+    }
+    // Élő módban a kontraszt/fényerő nem látszik a previewn, ezért a minimap is szűrő-only mátrixot kap
+    val liveColorFilter = remember(filterMode) {
+        ColorFilter.colorMatrix(ColorMatrix(buildFilterMatrixValues(filterMode, 1.0f, 0.0f)))
     }
 
     // Dismiss custom toast message
@@ -741,8 +713,9 @@ fun MagnifierMainScreen() {
         }
     }
 
-    // Reactive bindings to camera parameters
-    LaunchedEffect(liveZoomRatio) {
+    // Reactive bindings to camera parameters — a camera kulcs biztosítja, hogy rebind
+    // (forgatás, kameraváltás) után a visszaállított értékek újra érvényesüljenek
+    LaunchedEffect(camera, liveZoomRatio) {
         try {
             camera?.cameraControl?.setZoomRatio(liveZoomRatio)
         } catch (e: Exception) {
@@ -750,7 +723,7 @@ fun MagnifierMainScreen() {
         }
     }
 
-    LaunchedEffect(torchEnabled) {
+    LaunchedEffect(camera, torchEnabled) {
         try {
             camera?.cameraControl?.enableTorch(torchEnabled)
         } catch (e: Exception) {
@@ -758,7 +731,7 @@ fun MagnifierMainScreen() {
         }
     }
 
-    LaunchedEffect(exposureIndex) {
+    LaunchedEffect(camera, exposureIndex) {
         try {
             camera?.cameraControl?.setExposureCompensationIndex(exposureIndex)
         } catch (e: Exception) {
@@ -800,10 +773,7 @@ fun MagnifierMainScreen() {
             // Ensure selectedCameraIndex is within bounds
             val index = selectedCameraIndex.coerceIn(0, cameraInfos.lastIndex)
             val selectedCameraInfo = cameraInfos[index]
-     
-            // Reset torch state when swapping cameras
-            torchEnabled = false
-     
+
             val preview = Preview.Builder().build()
             
             val localImageCapture = ImageCapture.Builder()
@@ -840,11 +810,12 @@ fun MagnifierMainScreen() {
                 if (liveZoomRatio > maxZoom) liveZoomRatio = maxZoom
             }
      
-            // Observe exposure capabilities
+            // Observe exposure capabilities; a mentett exposure értéket az új kamera
+            // tartományába szorítjuk a felülírás helyett
             val exposureState = cameraInstance.cameraInfo.exposureState
             minExposureIndex = exposureState.exposureCompensationRange.lower
             maxExposureIndex = exposureState.exposureCompensationRange.upper
-            exposureIndex = exposureState.exposureCompensationIndex
+            exposureIndex = exposureIndex.coerceIn(minExposureIndex, maxExposureIndex)
         } catch (exc: Exception) {
             Log.e("Magnifier", "Use case binding failed", exc)
             isCameraBindingFailed = true
@@ -941,17 +912,28 @@ fun MagnifierMainScreen() {
                                 )
                             }
                         } else if (filterMode == FilterMode.YELLOW) {
+                            // Deszaturálás + sárga modulálás: luma → (l, l, 0), megegyezik a
+                            // mentésnél használt color matrix-szal (WYSIWYG)
                             Canvas(modifier = Modifier.fillMaxSize()) {
                                 drawRect(
-                                    color = Color(0xFFFBBF24),
+                                    color = Color.Gray,
                                     blendMode = androidx.compose.ui.graphics.BlendMode.Color
+                                )
+                                drawRect(
+                                    color = Color.Yellow,
+                                    blendMode = androidx.compose.ui.graphics.BlendMode.Modulate
                                 )
                             }
                         } else if (filterMode == FilterMode.RED) {
+                            // Deszaturálás + vörös modulálás: luma → (l, 0, 0)
                             Canvas(modifier = Modifier.fillMaxSize()) {
                                 drawRect(
-                                    color = Color.Red,
+                                    color = Color.Gray,
                                     blendMode = androidx.compose.ui.graphics.BlendMode.Color
+                                )
+                                drawRect(
+                                    color = Color.Red,
+                                    blendMode = androidx.compose.ui.graphics.BlendMode.Modulate
                                 )
                             }
                         }
@@ -977,18 +959,7 @@ fun MagnifierMainScreen() {
                                         }
                                         
                                         // Handle panning/dragging when digitally zoomed in
-                                        if (extraDigitalZoom > 1.0f) {
-                                            extraDigitalPan += pan
-                                            // Restrict pan bounds based on digital zoom level
-                                            val maxPanX = (extraDigitalZoom - 1.0f) * 500f
-                                            val maxPanY = (extraDigitalZoom - 1.0f) * 800f
-                                            extraDigitalPan = Offset(
-                                                x = extraDigitalPan.x.coerceIn(-maxPanX, maxPanX),
-                                                y = extraDigitalPan.y.coerceIn(-maxPanY, maxPanY)
-                                            )
-                                        } else {
-                                            extraDigitalPan = Offset.Zero
-                                        }
+                                        extraDigitalPan = clampPan(extraDigitalPan + pan, extraDigitalZoom, viewportSize)
                                     }
                                 }
                                 .pointerInput(Unit) {
@@ -1039,17 +1010,7 @@ fun MagnifierMainScreen() {
                             .pointerInput(Unit) {
                                 detectTransformGestures { _, pan, zoom, _ ->
                                     frozenScale = (frozenScale * zoom).coerceIn(0.5f, sliderMax)
-                                    if (frozenScale > 1.0f) {
-                                        frozenOffset += pan
-                                        val maxPanX = (frozenScale - 1.0f) * 500f
-                                        val maxPanY = (frozenScale - 1.0f) * 800f
-                                        frozenOffset = Offset(
-                                            x = frozenOffset.x.coerceIn(-maxPanX, maxPanX),
-                                            y = frozenOffset.y.coerceIn(-maxPanY, maxPanY)
-                                        )
-                                    } else {
-                                        frozenOffset = Offset.Zero
-                                    }
+                                    frozenOffset = clampPan(frozenOffset + pan, frozenScale, viewportSize)
                                 }
                             }
                             .pointerInput(Unit) {
@@ -1123,7 +1084,7 @@ fun MagnifierMainScreen() {
                                         bitmap = bitmap.asImageBitmap(),
                                         contentDescription = "Live Full Image Preview",
                                         contentScale = ContentScale.FillBounds,
-                                        colorFilter = combinedColorFilter,
+                                        colorFilter = liveColorFilter,
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 } ?: Box(
@@ -1237,6 +1198,8 @@ fun MagnifierMainScreen() {
                                     .border(1.5.dp, themeColor.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
                                     .clickable {
                                         if (availableCameras.isNotEmpty()) {
+                                            // Kameraváltásnál a vaku kikapcsol (forgatásnál viszont megmarad)
+                                            torchEnabled = false
                                             selectedCameraIndex = (selectedCameraIndex + 1) % availableCameras.size
                                         }
                                     }
@@ -1898,15 +1861,24 @@ fun MagnifierMainScreen() {
                                         previewView.bitmap
                                     }
                                     if (rawBitmap != null) {
+                                        // Kattintáskori állapot rögzítése, hogy a háttérfeldolgozás
+                                        // alatti állításások ne szivárogjanak a kimenetbe
+                                        val frozenNow = isFrozen
+                                        val digitalZoomNow = extraDigitalZoom
+                                        val digitalPanNow = extraDigitalPan
+                                        val sharpenNow = sharpenStrength
+                                        val filterNow = filterMode
+                                        val contrastNow = contrast
+                                        val brightnessNow = brightness
                                         isProcessing = true
-                                        coroutineScope.launch(Dispatchers.IO) {
-                                            val processedBitmap = if (!isFrozen && extraDigitalZoom > 1.0f && sharpenStrength > 0.0f) {
-                                                sharpenBitmap(rawBitmap, strength = sharpenStrength)
-                                            } else {
-                                                rawBitmap
+                                        coroutineScope.launch(Dispatchers.Default) {
+                                            val exportBitmap = processExportBitmap(
+                                                rawBitmap, frozenNow, digitalZoomNow, digitalPanNow,
+                                                sharpenNow, filterNow, contrastNow, brightnessNow
+                                            )
+                                            val savedUri = withContext(Dispatchers.IO) {
+                                                saveBitmapToGallery(context, exportBitmap)
                                             }
-                                            val filteredBitmap = applyColorFilterToBitmap(processedBitmap, filterMode, contrast, brightness)
-                                            val savedUri = saveBitmapToGallery(context, filteredBitmap)
                                             withContext(Dispatchers.Main) {
                                                 isProcessing = false
                                                 if (savedUri != null) {
@@ -2004,17 +1976,22 @@ fun MagnifierMainScreen() {
                                         previewView.bitmap
                                     }
                                     if (rawBitmap != null) {
+                                        val frozenNow = isFrozen
+                                        val digitalZoomNow = extraDigitalZoom
+                                        val digitalPanNow = extraDigitalPan
+                                        val sharpenNow = sharpenStrength
+                                        val filterNow = filterMode
+                                        val contrastNow = contrast
+                                        val brightnessNow = brightness
                                         isProcessing = true
-                                        coroutineScope.launch(Dispatchers.IO) {
-                                            val processedBitmap = if (!isFrozen && extraDigitalZoom > 1.0f && sharpenStrength > 0.0f) {
-                                                sharpenBitmap(rawBitmap, strength = sharpenStrength)
-                                            } else {
-                                                rawBitmap
-                                            }
-                                            val filteredBitmap = applyColorFilterToBitmap(processedBitmap, filterMode, contrast, brightness)
+                                        coroutineScope.launch(Dispatchers.Default) {
+                                            val exportBitmap = processExportBitmap(
+                                                rawBitmap, frozenNow, digitalZoomNow, digitalPanNow,
+                                                sharpenNow, filterNow, contrastNow, brightnessNow
+                                            )
                                             withContext(Dispatchers.Main) {
                                                 isProcessing = false
-                                                shareBitmap(context, filteredBitmap)
+                                                shareBitmap(context, exportBitmap)
                                             }
                                         }
                                     } else {
@@ -2150,14 +2127,12 @@ fun MagnifierMainScreen() {
     }
 }
 
-// Helper to manually render combined color matrices to a saved or shared bitmap in background threads
-fun applyColorFilterToBitmap(source: Bitmap, filterMode: FilterMode, contrast: Float, brightness: Float): Bitmap {
-    val resultBitmap = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
-    val canvas = android.graphics.Canvas(resultBitmap)
-    val paint = android.graphics.Paint()
-    
-    val matrix = androidx.compose.ui.graphics.ColorMatrix()
-    
+// A szűrő + kontraszt + fényerő kanonikus color matrix-a. A képernyős megjelenítés
+// (combinedColorFilter, élő overlay) és a mentett/megosztott kép ugyanebből épül,
+// hogy a kimenet pontosan az legyen, amit a felhasználó lát (WYSIWYG).
+fun buildFilterMatrixValues(filterMode: FilterMode, contrast: Float, brightness: Float): FloatArray {
+    val matrix = ColorMatrix()
+
     // 1. Apply base accessibility/night filter
     when (filterMode) {
         FilterMode.NORMAL -> { /* Keep identity */ }
@@ -2165,7 +2140,7 @@ fun applyColorFilterToBitmap(source: Bitmap, filterMode: FilterMode, contrast: F
             matrix.setToSaturation(0f)
         }
         FilterMode.INVERTED -> {
-            matrix.set(androidx.compose.ui.graphics.ColorMatrix(floatArrayOf(
+            matrix.set(ColorMatrix(floatArrayOf(
                 -1f, 0f, 0f, 0f, 255f,
                 0f, -1f, 0f, 0f, 255f,
                 0f, 0f, -1f, 0f, 255f,
@@ -2173,16 +2148,18 @@ fun applyColorFilterToBitmap(source: Bitmap, filterMode: FilterMode, contrast: F
             )))
         }
         FilterMode.YELLOW -> {
-            matrix.set(androidx.compose.ui.graphics.ColorMatrix(floatArrayOf(
-                0.2126f * 1.6f, 0.7152f * 1.6f, 0.0722f * 1.6f, 0f, 0f,
-                0.2126f * 1.6f, 0.7152f * 1.6f, 0.0722f * 1.6f, 0f, 0f,
+            // luma → (l, l, 0): megegyezik az élő nézet deszaturálás + sárga modulálás blendjével
+            matrix.set(ColorMatrix(floatArrayOf(
+                0.2126f, 0.7152f, 0.0722f, 0f, 0f,
+                0.2126f, 0.7152f, 0.0722f, 0f, 0f,
                 0f, 0f, 0f, 0f, 0f,
                 0f, 0f, 0f, 1f, 0f
             )))
         }
         FilterMode.RED -> {
-            matrix.set(androidx.compose.ui.graphics.ColorMatrix(floatArrayOf(
-                0.2126f * 1.8f, 0.7152f * 1.8f, 0.0722f * 1.8f, 0f, 0f,
+            // luma → (l, 0, 0): megegyezik az élő nézet deszaturálás + vörös modulálás blendjével
+            matrix.set(ColorMatrix(floatArrayOf(
+                0.2126f, 0.7152f, 0.0722f, 0f, 0f,
                 0f, 0f, 0f, 0f, 0f,
                 0f, 0f, 0f, 0f, 0f,
                 0f, 0f, 0f, 1f, 0f
@@ -2195,11 +2172,72 @@ fun applyColorFilterToBitmap(source: Bitmap, filterMode: FilterMode, contrast: F
     for (i in 0..14) {
         values[i] = values[i] * contrast
     }
-    values[4] = values[4] * contrast + brightness
-    values[9] = values[9] * contrast + brightness
-    values[14] = values[14] * contrast + brightness
+    values[4] = values[4] + brightness
+    values[9] = values[9] + brightness
+    values[14] = values[14] + brightness
 
-    paint.colorFilter = android.graphics.ColorMatrixColorFilter(values)
+    return values
+}
+
+// A digitális zoom által képernyőn látott kivágás forrás-koordinátákban; a geometria
+// megegyezik a minimap-kalkulációval (graphicsLayer középpontos skálázás + eltolás).
+fun computeVisibleCropRect(width: Int, height: Int, scale: Float, panX: Float, panY: Float): android.graphics.Rect {
+    if (scale <= 1.0f || width <= 0 || height <= 0) {
+        return android.graphics.Rect(0, 0, width, height)
+    }
+    val cropW = (width / scale).roundToInt().coerceIn(1, width)
+    val cropH = (height / scale).roundToInt().coerceIn(1, height)
+    val left = ((width / 2f - panX / scale) - cropW / 2f).roundToInt().coerceIn(0, width - cropW)
+    val top = ((height / 2f - panY / scale) - cropH / 2f).roundToInt().coerceIn(0, height - cropH)
+    return android.graphics.Rect(left, top, left + cropW, top + cropH)
+}
+
+// Pan-eltolás korlátozása úgy, hogy a nagyított tartalom széle ne szakadjon el a viewport szélétől
+fun clampPan(pan: Offset, scale: Float, viewport: IntSize): Offset {
+    if (scale <= 1.0f) return Offset.Zero
+    val maxPanX = (scale - 1.0f) * viewport.width / 2f
+    val maxPanY = (scale - 1.0f) * viewport.height / 2f
+    return Offset(
+        x = pan.x.coerceIn(-maxPanX, maxPanX),
+        y = pan.y.coerceIn(-maxPanY, maxPanY)
+    )
+}
+
+// Mentés/megosztás előtti feldolgozás. Élő módban a képernyőn látott kivágást és szűrőt
+// reprodukálja; a kontraszt/fényerő élő nézetben nem látszik, ezért ott nem kerül a kimenetre.
+fun processExportBitmap(
+    raw: Bitmap,
+    isFrozen: Boolean,
+    digitalZoom: Float,
+    digitalPan: Offset,
+    sharpenStrength: Float,
+    filterMode: FilterMode,
+    contrast: Float,
+    brightness: Float
+): Bitmap {
+    if (isFrozen) {
+        return applyColorFilterToBitmap(raw, filterMode, contrast, brightness)
+    }
+    var result = raw
+    if (digitalZoom > 1.0f) {
+        val rect = computeVisibleCropRect(result.width, result.height, digitalZoom, digitalPan.x, digitalPan.y)
+        result = Bitmap.createBitmap(result, rect.left, rect.top, rect.width(), rect.height())
+        if (sharpenStrength > 0.0f) {
+            result = sharpenBitmap(result, strength = sharpenStrength)
+        }
+    }
+    return applyColorFilterToBitmap(result, filterMode, 1.0f, 0.0f)
+}
+
+// Helper to manually render combined color matrices to a saved or shared bitmap in background threads
+fun applyColorFilterToBitmap(source: Bitmap, filterMode: FilterMode, contrast: Float, brightness: Float): Bitmap {
+    if (filterMode == FilterMode.NORMAL && contrast == 1.0f && brightness == 0.0f) {
+        return source
+    }
+    val resultBitmap = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(resultBitmap)
+    val paint = android.graphics.Paint()
+    paint.colorFilter = android.graphics.ColorMatrixColorFilter(buildFilterMatrixValues(filterMode, contrast, brightness))
     canvas.drawBitmap(source, 0f, 0f, paint)
     return resultBitmap
 }
