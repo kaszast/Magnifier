@@ -73,6 +73,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.abs
@@ -110,6 +113,19 @@ fun hasCameraPermission(context: Context): Boolean {
         context,
         Manifest.permission.CAMERA
     ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+}
+
+suspend fun <T> awaitListenableFuture(
+    future: com.google.common.util.concurrent.ListenableFuture<T>,
+    context: Context
+): T = suspendCoroutine { continuation ->
+    future.addListener({
+        try {
+            continuation.resume(future.get())
+        } catch (e: Exception) {
+            continuation.resumeWithException(e)
+        }
+    }, androidx.core.content.ContextCompat.getMainExecutor(context))
 }
 
 fun getOpticalSteps(context: Context, minZoom: Float, maxZoom: Float): List<Float> {
@@ -198,15 +214,16 @@ fun getOpticalSteps(context: Context, minZoom: Float, maxZoom: Float): List<Floa
     
     // Add default fallbacks if list is too small
     if (steps.size <= 2) {
-        listOf(2.0f, 4.0f, 8.0f, 16.0f).forEach {
+        listOf(2.0f, 4.0f, 8.0f, 16.0f, 32.0f, 64.0f).forEach {
             if (it in minZoom..maxZoom) steps.add(it)
         }
     }
     
-    // Add some high digital/hybrid zoom milestones if maxZoom is very large (e.g. 120x)
+    // Add some high digital/hybrid zoom milestones if maxZoom is very large (e.g. 64x+)
     if (maxZoom >= 30.0f) {
-        if (10.0f in minZoom..maxZoom) steps.add(10.0f)
-        if (30.0f in minZoom..maxZoom) steps.add(30.0f)
+        listOf(2.0f, 4.0f, 8.0f, 16.0f, 32.0f, 64.0f).forEach {
+            if (it in minZoom..maxZoom) steps.add(it)
+        }
     }
     if (maxZoom >= 100.0f) {
         if (50.0f in minZoom..maxZoom) steps.add(50.0f)
@@ -516,22 +533,14 @@ fun MagnifierMainScreen() {
     val sliderMin by remember(isFrozen, minZoom) {
         derivedStateOf { if (isFrozen) 0.5f else minZoom }
     }
-    val sliderMax by remember(isFrozen, maxZoom) {
-        derivedStateOf {
-            if (isFrozen) {
-                10.0f
-            } else {
-                if (maxZoom >= 10.0f) maxZoom else (maxZoom * 6.0f)
-            }
-        }
-    }
-    var presets by remember { mutableStateOf(listOf(1.0f, 2.0f, 4.0f, 8.0f, 12.0f, 16.0f)) }
+    val sliderMax = 64.0f
+    var presets by remember { mutableStateOf(listOf(1.0f, 2.0f, 4.0f, 8.0f, 16.0f, 32.0f, 64.0f)) }
     LaunchedEffect(isFrozen, minZoom, maxZoom) {
         if (isFrozen) {
-            presets = listOf(0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 12.0f, 16.0f)
+            presets = listOf(0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f, 32.0f, 64.0f)
         } else {
             val steps = withContext(Dispatchers.IO) {
-                getOpticalSteps(context, minZoom, maxZoom)
+                getOpticalSteps(context, minZoom, sliderMax)
             }
             presets = steps
         }
@@ -760,7 +769,10 @@ fun MagnifierMainScreen() {
     DisposableEffect(Unit) {
         onDispose {
             try {
-                ProcessCameraProvider.getInstance(context).get().unbindAll()
+                val future = ProcessCameraProvider.getInstance(context)
+                if (future.isDone) {
+                    future.get().unbindAll()
+                }
             } catch (e: Exception) {
                 Log.e("Magnifier", "Failed to unbind camera on dispose", e)
             }
@@ -769,17 +781,19 @@ fun MagnifierMainScreen() {
 
     // Bind camera lifecycle
     LaunchedEffect(selectedCameraIndex) {
-        if (!hasCameraPermission(context)) return@LaunchedEffect
+        if (!hasCameraPermission(context)) {
+            isCameraCheckingFinished = true
+            return@LaunchedEffect
+        }
         try {
-            val cameraProvider = withContext(Dispatchers.IO) {
-                ProcessCameraProvider.getInstance(context).get()
-            }
+            val cameraProvider = awaitListenableFuture(ProcessCameraProvider.getInstance(context), context)
             val cameraInfos = cameraProvider.availableCameraInfos
             availableCameras = cameraInfos
             
             if (cameraInfos.isEmpty()) {
                 isCameraBindingFailed = true
                 previewUseCase = null
+                isCameraCheckingFinished = true
                 return@LaunchedEffect
             }
      
@@ -1024,7 +1038,7 @@ fun MagnifierMainScreen() {
                             .fillMaxSize()
                             .pointerInput(Unit) {
                                 detectTransformGestures { _, pan, zoom, _ ->
-                                    frozenScale = (frozenScale * zoom).coerceIn(0.5f, 10.0f)
+                                    frozenScale = (frozenScale * zoom).coerceIn(0.5f, sliderMax)
                                     if (frozenScale > 1.0f) {
                                         frozenOffset += pan
                                         val maxPanX = (frozenScale - 1.0f) * 500f
@@ -1251,13 +1265,6 @@ fun MagnifierMainScreen() {
                                         Icons.Default.PhotoCamera
                                     }
                                     
-                                    Icon(
-                                        imageVector = cameraIcon,
-                                        contentDescription = "Aktív kamera",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-
                                     val cameraLabel = if (activeCameraInfo != null) {
                                         when (activeCameraInfo.lensFacing) {
                                             0 -> "Előlapi"
@@ -1275,11 +1282,12 @@ fun MagnifierMainScreen() {
                                     } else {
                                         "Kamera"
                                     }
-                                    Text(
-                                        text = cameraLabel,
-                                        color = Color.White,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium
+                                    
+                                    Icon(
+                                        imageVector = cameraIcon,
+                                        contentDescription = cameraLabel,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
                                     )
                                 }
                             }
@@ -1432,7 +1440,7 @@ fun MagnifierMainScreen() {
                                                 .border(1.dp, Color(0xFF2E2C33), CircleShape)
                                                 .clickable {
                                                     if (isFrozen) {
-                                                        frozenScale = min(10.0f, frozenScale + 0.5f)
+                                                        frozenScale = min(sliderMax, frozenScale + 0.5f)
                                                     } else {
                                                         val currentZoom = liveZoomRatio * extraDigitalZoom
                                                         val targetZoom = min(sliderMax, currentZoom + 0.5f)
@@ -1464,60 +1472,68 @@ fun MagnifierMainScreen() {
                                         )
                                     }
 
-                                    // Quick Presets
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .horizontalScroll(rememberScrollState()),
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        presets.forEach { preset ->
-                                            val isSelected = if (isFrozen) {
-                                                abs(frozenScale - preset) < 0.15f
-                                            } else {
-                                                abs((liveZoomRatio * extraDigitalZoom) - preset) < 0.15f
-                                            }
-                                            
-                                            val isPresetPossible = isFrozen || preset <= sliderMax
-                                            if (isPresetPossible) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .width(52.dp)
-                                                        .heightIn(min = 40.dp)
-                                                        .background(
-                                                            if (isSelected) themeColor else Color(0xFF1B1A21),
-                                                            RoundedCornerShape(12.dp)
-                                                        )
-                                                        .border(1.dp, if (isSelected) themeColor else Color(0xFF2E2C33), RoundedCornerShape(12.dp))
-                                                        .clickable {
-                                                            if (isFrozen) {
-                                                                frozenScale = preset
-                                                            } else {
-                                                                if (preset < minZoom) {
-                                                                    liveZoomRatio = minZoom
-                                                                    extraDigitalZoom = 1.0f
-                                                                    extraDigitalPan = Offset.Zero
-                                                                } else if (preset <= maxZoom) {
-                                                                    liveZoomRatio = preset.coerceIn(minZoom, maxZoom)
-                                                                    extraDigitalZoom = 1.0f
-                                                                    extraDigitalPan = Offset.Zero
+                                    // Quick Presets (Non-scrollable, responsive fitting)
+                                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                                        val availableWidth = maxWidth
+                                        val itemWidth = 52.dp
+                                        val spacing = 6.dp
+                                        // Calculate how many items can fully fit in the available width:
+                                        // k * itemWidth + (k - 1) * spacing <= availableWidth
+                                        val maxFit = ((availableWidth + spacing) / (itemWidth + spacing)).toInt().coerceAtLeast(1)
+                                        val visiblePresets = presets.take(maxFit)
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            visiblePresets.forEach { preset ->
+                                                val isSelected = if (isFrozen) {
+                                                    abs(frozenScale - preset) < 0.15f
+                                                } else {
+                                                    abs((liveZoomRatio * extraDigitalZoom) - preset) < 0.15f
+                                                }
+                                                
+                                                val isPresetPossible = isFrozen || preset <= sliderMax
+                                                if (isPresetPossible) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .width(itemWidth)
+                                                            .heightIn(min = 40.dp)
+                                                            .background(
+                                                                if (isSelected) themeColor else Color(0xFF1B1A21),
+                                                                RoundedCornerShape(12.dp)
+                                                            )
+                                                            .border(1.dp, if (isSelected) themeColor else Color(0xFF2E2C33), RoundedCornerShape(12.dp))
+                                                            .clickable {
+                                                                if (isFrozen) {
+                                                                    frozenScale = preset
                                                                 } else {
-                                                                    liveZoomRatio = maxZoom
-                                                                    extraDigitalZoom = if (maxZoom > 0f) preset / maxZoom else 1.0f
-                                                                    extraDigitalPan = Offset.Zero
+                                                                    if (preset < minZoom) {
+                                                                        liveZoomRatio = minZoom
+                                                                        extraDigitalZoom = 1.0f
+                                                                        extraDigitalPan = Offset.Zero
+                                                                    } else if (preset <= maxZoom) {
+                                                                        liveZoomRatio = preset.coerceIn(minZoom, maxZoom)
+                                                                        extraDigitalZoom = 1.0f
+                                                                        extraDigitalPan = Offset.Zero
+                                                                    } else {
+                                                                        liveZoomRatio = maxZoom
+                                                                        extraDigitalZoom = if (maxZoom > 0f) preset / maxZoom else 1.0f
+                                                                        extraDigitalPan = Offset.Zero
+                                                                    }
                                                                 }
                                                             }
-                                                        }
-                                                        .padding(vertical = 8.dp),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Text(
-                                                        text = if (preset % 1.0f == 0.0f) String.format("%.0fx", preset) else String.format("%.1fx", preset),
-                                                        color = if (isSelected) Color.Black else Color.White,
-                                                        fontSize = 11.sp,
-                                                        fontWeight = FontWeight.Bold
-                                                    )
+                                                            .padding(vertical = 8.dp),
+                                                        contentAlignment = Alignment.Center
+                                                     ) {
+                                                        Text(
+                                                            text = if (preset % 1.0f == 0.0f) String.format("%.0fx", preset) else String.format("%.1fx", preset),
+                                                            color = if (isSelected) Color.Black else Color.White,
+                                                            fontSize = 11.sp,
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
