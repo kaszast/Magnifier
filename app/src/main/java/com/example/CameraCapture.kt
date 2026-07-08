@@ -80,10 +80,14 @@ fun getOpticalSteps(context: Context, minZoom: Float, maxZoom: Float): List<Floa
     // 1. Check for emulator to avoid any camera2 service locks/crashes
     val isEmulator = Build.FINGERPRINT.startsWith("generic")
             || Build.FINGERPRINT.startsWith("unknown")
+            || Build.FINGERPRINT.contains("sdk_gphone")
             || Build.MODEL.contains("google_sdk")
+            || Build.MODEL.contains("sdk_gphone")
             || Build.MODEL.contains("Emulator")
             || Build.MODEL.contains("Android SDK built for x86")
             || Build.MANUFACTURER.contains("Genymotion")
+            || Build.HARDWARE == "ranchu"
+            || Build.HARDWARE == "goldfish"
             || (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic"))
             || "google_sdk" == Build.PRODUCT
 
@@ -126,17 +130,7 @@ fun getOpticalSteps(context: Context, minZoom: Float, maxZoom: Float): List<Floa
                                 val eqFocal = f * (43.27f / diagonal)
                                 val rawZoom = eqFocal / 26.0f
                                 
-                                val rounded = when {
-                                    rawZoom < 0.8f -> {
-                                        if (abs(rawZoom - minZoom) < 0.15f) minZoom else if (rawZoom < 0.55f) 0.5f else 0.6f
-                                    }
-                                    rawZoom < 1.3f -> 1.0f
-                                    rawZoom < 2.5f -> 2.0f
-                                    rawZoom < 3.5f -> 3.0f
-                                    rawZoom < 4.8f -> 4.3f
-                                    rawZoom < 6.0f -> 5.0f
-                                    else -> ((rawZoom * 2f).roundToInt() / 2f)
-                                }
+                                val rounded = roundZoomStep(rawZoom, minZoom)
                                 if (rounded in minZoom..maxZoom) {
                                     steps.add(rounded)
                                 }
@@ -152,13 +146,38 @@ fun getOpticalSteps(context: Context, minZoom: Float, maxZoom: Float): List<Floa
         Log.e("Magnifier", "Error querying CameraManager", t)
     }
     
+    return finalizeZoomSteps(steps, minZoom, maxZoom)
+}
+
+// Nyers, 35 mm-ekvivalensből számolt zoom-érték kerekítése bevett preset-lépcsőre
+fun roundZoomStep(rawZoom: Float, minZoom: Float): Float = when {
+    rawZoom < 0.8f -> {
+        if (abs(rawZoom - minZoom) < 0.15f) minZoom else if (rawZoom < 0.55f) 0.5f else 0.6f
+    }
+    rawZoom < 1.3f -> 1.0f
+    rawZoom < 2.5f -> 2.0f
+    rawZoom < 3.5f -> 3.0f
+    rawZoom < 4.8f -> 4.3f
+    rawZoom < 6.0f -> 5.0f
+    else -> ((rawZoom * 2f).roundToInt() / 2f)
+}
+
+// A jelölt lépcsők kiegészítése és szűkítése: default sor kevés jelöltnél, mérföldkövek nagy
+// zoom-tartománynál, rendezés és legfeljebb 7 preset a UI zsúfoltságának elkerülésére.
+fun finalizeZoomSteps(candidates: Set<Float>, minZoom: Float, maxZoom: Float): List<Float> {
+    val steps = candidates.toMutableSet()
+    steps.add(minZoom)
+    if (1.0f in minZoom..maxZoom) {
+        steps.add(1.0f)
+    }
+
     // Add default fallbacks if list is too small
     if (steps.size <= 2) {
         listOf(2.0f, 4.0f, 8.0f, 16.0f, 32.0f, 64.0f).forEach {
             if (it in minZoom..maxZoom) steps.add(it)
         }
     }
-    
+
     // Add some high digital/hybrid zoom milestones if maxZoom is very large (e.g. 64x+)
     if (maxZoom >= 30.0f) {
         listOf(2.0f, 4.0f, 8.0f, 16.0f, 32.0f, 64.0f).forEach {
@@ -170,7 +189,7 @@ fun getOpticalSteps(context: Context, minZoom: Float, maxZoom: Float): List<Floa
         if (100.0f in minZoom..maxZoom) steps.add(100.0f)
         steps.add(maxZoom)
     }
-    
+
     // Sort and return as a nice list, max 7 presets to prevent cluttering the UI
     val sorted = steps.toList().sorted()
     return if (sorted.size > 7) {
@@ -178,7 +197,7 @@ fun getOpticalSteps(context: Context, minZoom: Float, maxZoom: Float): List<Floa
         result.add(sorted.first())
         result.add(sorted.last())
         if (1.0f in sorted) result.add(1.0f)
-        
+
         val remaining = sorted.filter { it != sorted.first() && it != sorted.last() && it != 1.0f }
         val stepSize = max(1, remaining.size / (7 - result.size))
         var idx = 0

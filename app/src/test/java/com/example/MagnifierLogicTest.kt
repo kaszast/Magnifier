@@ -9,6 +9,7 @@ import java.io.ByteArrayOutputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -144,6 +145,40 @@ class MagnifierLogicTest {
         val v = buildFilterMatrixValues(FilterMode.INVERTED, 2.0f, 0.0f)
         assertEquals(-2f, v[0], delta)
         assertEquals(510f, v[4], delta)
+    }
+
+    // --- roundZoomStep / finalizeZoomSteps ---
+
+    @Test
+    fun `roundZoomStep bevett lepcsore kerekit`() {
+        assertEquals(0.5f, roundZoomStep(0.5f, 1.0f), delta)
+        assertEquals(0.6f, roundZoomStep(0.7f, 1.0f), delta)
+        assertEquals(1.0f, roundZoomStep(1.1f, 1.0f), delta)
+        assertEquals(2.0f, roundZoomStep(1.9f, 1.0f), delta)
+        assertEquals(3.0f, roundZoomStep(3.0f, 1.0f), delta)
+        assertEquals(4.3f, roundZoomStep(4.2f, 1.0f), delta)
+        assertEquals(5.0f, roundZoomStep(5.5f, 1.0f), delta)
+        assertEquals(10.0f, roundZoomStep(10.1f, 1.0f), delta)
+    }
+
+    @Test
+    fun `roundZoomStep a kozeli minZoomhoz simul`() {
+        assertEquals(0.6f, roundZoomStep(0.7f, 0.6f), delta)
+    }
+
+    @Test
+    fun `finalizeZoomSteps keves jeloltnel default sorral tolt fel`() {
+        assertEquals(listOf(1.0f, 2.0f, 4.0f, 8.0f), finalizeZoomSteps(emptySet(), 1.0f, 8.0f))
+    }
+
+    @Test
+    fun `finalizeZoomSteps nagy zoomnal merfoldkovekkel es legfeljebb 7 presettel`() {
+        val steps = finalizeZoomSteps(setOf(0.6f, 1.0f, 2.0f, 4.3f, 10.0f), 0.6f, 120.0f)
+        assertEquals(7, steps.size)
+        assertEquals(0.6f, steps.first(), delta)
+        assertEquals(120.0f, steps.last(), delta)
+        assertTrue(1.0f in steps)
+        assertEquals(steps, steps.sorted())
     }
 
     // --- computeZoomDistribution ---
