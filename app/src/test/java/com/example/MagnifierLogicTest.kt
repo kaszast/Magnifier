@@ -146,6 +146,28 @@ class MagnifierLogicTest {
         assertEquals(510f, v[4], delta)
     }
 
+    // --- computeZoomDistribution ---
+
+    @Test
+    fun `zoom eloszlas kamera-tartomanyon belul csak kamera`() {
+        assertEquals(ZoomDistribution(5.0f, 1.0f), computeZoomDistribution(5.0f, 1.0f, 8.0f))
+    }
+
+    @Test
+    fun `zoom eloszlas a kamera-max folott digitalis szorzot ad`() {
+        assertEquals(ZoomDistribution(8.0f, 2.0f), computeZoomDistribution(16.0f, 1.0f, 8.0f))
+    }
+
+    @Test
+    fun `zoom eloszlas minimum ala nem megy`() {
+        assertEquals(ZoomDistribution(0.6f, 1.0f), computeZoomDistribution(0.1f, 0.6f, 8.0f))
+    }
+
+    @Test
+    fun `zoom eloszlas pontosan a kamera-maxon meg nem digitalis`() {
+        assertEquals(ZoomDistribution(8.0f, 1.0f), computeZoomDistribution(8.0f, 1.0f, 8.0f))
+    }
+
     // --- computeInSampleSize ---
 
     @Test

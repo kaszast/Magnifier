@@ -597,6 +597,17 @@ fun MagnifierMainScreen() {
         }
     }
 
+    // Az összes élő zoom-vezérlő (pinch, dupla koppintás, −/+ gomb, slider, presetek) közös
+    // belépési pontja: a cél teljes nagyítást elosztja kamera- és digitális zoomra.
+    fun applyTotalZoom(target: Float, resetPan: Boolean) {
+        val distribution = computeZoomDistribution(target.coerceIn(minZoom, sliderMax), minZoom, maxZoom)
+        liveZoomRatio = distribution.cameraZoom
+        extraDigitalZoom = distribution.digitalZoom
+        if (resetPan || distribution.digitalZoom <= 1.0f) {
+            extraDigitalPan = Offset.Zero
+        }
+    }
+
     var rawFrozenBitmap by magnifierViewModel::rawFrozenBitmap
     var frozenBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var sharpenStrength by rememberSaveable { mutableStateOf(0.0f) } // 0.0f (Off) to 2.0f (Very Strong)
@@ -981,16 +992,7 @@ fun MagnifierMainScreen() {
                                     detectTransformGestures { _, pan, zoom, _ ->
                                         if (zoom != 1f) {
                                             // Seamless unified zoom logic
-                                            val currentZoom = liveZoomRatio * extraDigitalZoom
-                                            val newZoom = (currentZoom * zoom).coerceIn(minZoom, sliderMax)
-                                            if (newZoom <= maxZoom) {
-                                                liveZoomRatio = newZoom
-                                                extraDigitalZoom = 1.0f
-                                                extraDigitalPan = Offset.Zero
-                                            } else {
-                                                liveZoomRatio = maxZoom
-                                                extraDigitalZoom = if (maxZoom > 0f) newZoom / maxZoom else 1.0f
-                                            }
+                                            applyTotalZoom(liveZoomRatio * extraDigitalZoom * zoom, resetPan = false)
                                         }
                                         
                                         // Handle panning/dragging when digitally zoomed in
@@ -1002,19 +1004,9 @@ fun MagnifierMainScreen() {
                                         onDoubleTap = {
                                             val currentZoom = liveZoomRatio * extraDigitalZoom
                                             if (Math.abs(currentZoom - 1.0f) > 0.05f) {
-                                                extraDigitalZoom = 1.0f
-                                                extraDigitalPan = Offset.Zero
-                                                liveZoomRatio = 1.0f.coerceIn(minZoom, maxZoom)
+                                                applyTotalZoom(1.0f, resetPan = true)
                                             } else {
-                                                val targetZoom = (minZoom + maxZoom) / 2.0f
-                                                if (targetZoom <= maxZoom) {
-                                                    liveZoomRatio = targetZoom
-                                                    extraDigitalZoom = 1.0f
-                                                } else {
-                                                    liveZoomRatio = maxZoom
-                                                    extraDigitalZoom = if (maxZoom > 0f) targetZoom / maxZoom else 1.0f
-                                                }
-                                                extraDigitalPan = Offset.Zero
+                                                applyTotalZoom((minZoom + maxZoom) / 2.0f, resetPan = true)
                                             }
                                         },
                                         onTap = { offset ->
@@ -1381,16 +1373,7 @@ fun MagnifierMainScreen() {
                                                     if (isFrozen) {
                                                         frozenScale = max(0.5f, frozenScale - 0.5f)
                                                     } else {
-                                                        val currentZoom = liveZoomRatio * extraDigitalZoom
-                                                        val targetZoom = max(minZoom, currentZoom - 0.5f)
-                                                        if (targetZoom <= maxZoom) {
-                                                            liveZoomRatio = targetZoom
-                                                            extraDigitalZoom = 1.0f
-                                                            extraDigitalPan = Offset.Zero
-                                                        } else {
-                                                            liveZoomRatio = maxZoom
-                                                            extraDigitalZoom = if (maxZoom > 0f) targetZoom / maxZoom else 1.0f
-                                                        }
+                                                        applyTotalZoom(liveZoomRatio * extraDigitalZoom - 0.5f, resetPan = false)
                                                     }
                                                 },
                                             contentAlignment = Alignment.Center
@@ -1409,15 +1392,7 @@ fun MagnifierMainScreen() {
                                                 if (isFrozen) {
                                                     frozenScale = newValue
                                                 } else {
-                                                    val clampedValue = newValue.coerceIn(minZoom, sliderMax)
-                                                    if (clampedValue <= maxZoom) {
-                                                        liveZoomRatio = clampedValue
-                                                        extraDigitalZoom = 1.0f
-                                                        extraDigitalPan = Offset.Zero
-                                                    } else {
-                                                        liveZoomRatio = maxZoom
-                                                        extraDigitalZoom = if (maxZoom > 0f) clampedValue / maxZoom else 1.0f
-                                                    }
+                                                    applyTotalZoom(newValue, resetPan = false)
                                                 }
                                             },
                                             valueRange = sliderMin..sliderMax,
@@ -1440,15 +1415,7 @@ fun MagnifierMainScreen() {
                                                     if (isFrozen) {
                                                         frozenScale = min(sliderMax, frozenScale + 0.5f)
                                                     } else {
-                                                        val currentZoom = liveZoomRatio * extraDigitalZoom
-                                                        val targetZoom = min(sliderMax, currentZoom + 0.5f)
-                                                        if (targetZoom <= maxZoom) {
-                                                            liveZoomRatio = targetZoom
-                                                            extraDigitalZoom = 1.0f
-                                                        } else {
-                                                            liveZoomRatio = maxZoom
-                                                            extraDigitalZoom = if (maxZoom > 0f) targetZoom / maxZoom else 1.0f
-                                                        }
+                                                        applyTotalZoom(liveZoomRatio * extraDigitalZoom + 0.5f, resetPan = false)
                                                     }
                                                 },
                                             contentAlignment = Alignment.Center
@@ -1507,19 +1474,7 @@ fun MagnifierMainScreen() {
                                                                 if (isFrozen) {
                                                                     frozenScale = preset
                                                                 } else {
-                                                                    if (preset < minZoom) {
-                                                                        liveZoomRatio = minZoom
-                                                                        extraDigitalZoom = 1.0f
-                                                                        extraDigitalPan = Offset.Zero
-                                                                    } else if (preset <= maxZoom) {
-                                                                        liveZoomRatio = preset.coerceIn(minZoom, maxZoom)
-                                                                        extraDigitalZoom = 1.0f
-                                                                        extraDigitalPan = Offset.Zero
-                                                                    } else {
-                                                                        liveZoomRatio = maxZoom
-                                                                        extraDigitalZoom = if (maxZoom > 0f) preset / maxZoom else 1.0f
-                                                                        extraDigitalPan = Offset.Zero
-                                                                    }
+                                                                    applyTotalZoom(preset, resetPan = true)
                                                                 }
                                                             }
                                                             .padding(vertical = 8.dp),
