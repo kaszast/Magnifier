@@ -2,16 +2,17 @@ package com.example
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import androidx.annotation.StringRes
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ColorMatrix
 import kotlin.math.roundToInt
 
-enum class FilterMode(val displayName: String, val description: String) {
-    NORMAL("Normál", "Valósághű színek"),
-    MONOCHROME("Fekete-Fehér", "Megnövelt szövegolvashatóság"),
-    INVERTED("Negatív", "Sötét háttér a szem kíméléséért"),
-    YELLOW("Sárga-Fekete", "Gyengénlátóknak ideális kontraszt"),
-    RED("Vörös", "Éjszakai látásmegőrzés")
+enum class FilterMode(@StringRes val labelRes: Int, @StringRes val descriptionRes: Int) {
+    NORMAL(R.string.filter_normal, R.string.filter_normal_desc),
+    MONOCHROME(R.string.filter_monochrome, R.string.filter_monochrome_desc),
+    INVERTED(R.string.filter_inverted, R.string.filter_inverted_desc),
+    YELLOW(R.string.filter_yellow, R.string.filter_yellow_desc),
+    RED(R.string.filter_red, R.string.filter_red_desc)
 }
 
 // A szűrő + kontraszt + fényerő kanonikus color matrix-a. A képernyős megjelenítés

@@ -76,7 +76,7 @@ fun shareBitmap(context: Context, bitmap: Bitmap) {
                 putExtra(Intent.EXTRA_STREAM, contentUri)
                 type = "image/jpeg"
             }
-            context.startActivity(Intent.createChooser(shareIntent, "Fénykép megosztása"))
+            context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_chooser_title)))
         }
     } catch (e: Exception) {
         Log.e("Magnifier", "Sikertelen kép megosztás", e)

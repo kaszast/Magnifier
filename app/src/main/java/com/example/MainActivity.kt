@@ -62,6 +62,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -171,7 +172,7 @@ fun PermissionRequiredScreen(onRequestPermission: () -> Unit) {
             ) {
                 Icon(
                     imageVector = Icons.Default.CameraAlt,
-                    contentDescription = "Camera",
+                    contentDescription = stringResource(R.string.permission_camera_icon),
                     tint = Color(0xFFFBBF24), // Amber 400
                     modifier = Modifier.size(56.dp)
                 )
@@ -186,7 +187,7 @@ fun PermissionRequiredScreen(onRequestPermission: () -> Unit) {
                 ) {
                     Icon(
                         imageVector = Icons.Default.Lock,
-                        contentDescription = "Permission locked",
+                        contentDescription = stringResource(R.string.permission_locked),
                         tint = Color.White,
                         modifier = Modifier.size(18.dp)
                     )
@@ -207,7 +208,7 @@ fun PermissionRequiredScreen(onRequestPermission: () -> Unit) {
             ) {
                 Icon(
                     imageVector = Icons.Default.Check,
-                    contentDescription = "Grant Permission",
+                    contentDescription = stringResource(R.string.permission_grant),
                     tint = Color.White,
                     modifier = Modifier.size(28.dp)
                 )

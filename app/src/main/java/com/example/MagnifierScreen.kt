@@ -19,6 +19,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.StringRes
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.FocusMeteringAction
@@ -62,6 +63,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -95,7 +97,7 @@ private val OffsetSaver = listSaver<Offset, Float>(
     restore = { Offset(it[0], it[1]) }
 )
 
-data class AppThemeColor(val name: String, val color: Color)
+data class AppThemeColor(@StringRes val nameRes: Int, val color: Color)
 
 @Composable
 fun NoCameraScreen() {
@@ -123,7 +125,7 @@ fun NoCameraScreen() {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Nincs kamera elérhető",
+                        contentDescription = stringResource(R.string.no_camera_icon),
                         tint = Color(0xFFEF4444).copy(alpha = 0.8f),
                         modifier = Modifier.size(56.dp)
                     )
@@ -142,7 +144,7 @@ fun NoCameraScreen() {
             Spacer(modifier = Modifier.height(28.dp))
             
             Text(
-                text = "Nem található kamera",
+                text = stringResource(R.string.no_camera_title),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
@@ -152,7 +154,7 @@ fun NoCameraScreen() {
             Spacer(modifier = Modifier.height(12.dp))
             
             Text(
-                text = "A nagyító alkalmazás működéséhez fizikai kamera szükséges. Kérjük, futtassa az alkalmazást egy kamerával rendelkező fizikai eszközön.",
+                text = stringResource(R.string.no_camera_body),
                 style = MaterialTheme.typography.bodyLarge,
                 color = Color(0xFFA1A1AA),
                 textAlign = TextAlign.Center,
@@ -183,13 +185,13 @@ fun NoCameraScreen() {
                 ) {
                     Icon(
                         imageVector = Icons.Default.Check,
-                        contentDescription = "Zöld pipa",
+                        contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "Bezárás",
+                        text = stringResource(R.string.action_close),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -216,11 +218,11 @@ fun MagnifierMainScreen() {
 
     val themeOptions = remember {
         listOf(
-            AppThemeColor("Lila", Color(0xFFB180FF)),
-            AppThemeColor("Zöld", Color(0xFF00FF87)),
-            AppThemeColor("Arany", Color(0xFFFFB300)),
-            AppThemeColor("Kék", Color(0xFF00D2FF)),
-            AppThemeColor("Narancs", Color(0xFFFF6B00))
+            AppThemeColor(R.string.theme_purple, Color(0xFFB180FF)),
+            AppThemeColor(R.string.theme_green, Color(0xFF00FF87)),
+            AppThemeColor(R.string.theme_gold, Color(0xFFFFB300)),
+            AppThemeColor(R.string.theme_blue, Color(0xFF00D2FF)),
+            AppThemeColor(R.string.theme_orange, Color(0xFFFF6B00))
         )
     }
     var currentThemeIndex by rememberSaveable { mutableStateOf(0) }
@@ -613,7 +615,7 @@ fun MagnifierMainScreen() {
                         liveSharpenedBitmap?.let { bmp ->
                             Image(
                                 bitmap = bmp.asImageBitmap(),
-                                contentDescription = "Live Sharpened Zoom Preview",
+                                contentDescription = stringResource(R.string.cd_live_sharpened),
                                 contentScale = ContentScale.FillBounds,
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -742,7 +744,7 @@ fun MagnifierMainScreen() {
                         frozenBitmap?.let { bitmap ->
                             Image(
                                 bitmap = bitmap.asImageBitmap(),
-                                contentDescription = "Frozen frame magnifier review",
+                                contentDescription = stringResource(R.string.cd_frozen_image),
                                 contentScale = ContentScale.Fit,
                                 colorFilter = combinedColorFilter,
                                 modifier = Modifier
@@ -783,7 +785,7 @@ fun MagnifierMainScreen() {
                                 frozenBitmap?.let { bitmap ->
                                     Image(
                                         bitmap = bitmap.asImageBitmap(),
-                                        contentDescription = "Frozen Full Image",
+                                        contentDescription = stringResource(R.string.cd_minimap_frozen),
                                         contentScale = ContentScale.FillBounds,
                                         colorFilter = combinedColorFilter,
                                         modifier = Modifier.fillMaxSize()
@@ -793,7 +795,7 @@ fun MagnifierMainScreen() {
                                 liveThumbnailBitmap?.let { bitmap ->
                                     Image(
                                         bitmap = bitmap.asImageBitmap(),
-                                        contentDescription = "Live Full Image Preview",
+                                        contentDescription = stringResource(R.string.cd_minimap_live),
                                         contentScale = ContentScale.FillBounds,
                                         colorFilter = liveColorFilter,
                                         modifier = Modifier.fillMaxSize()
@@ -895,7 +897,7 @@ fun MagnifierMainScreen() {
                         ) {
                             Icon(
                                 imageVector = if (controlsVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = "Kezelőszervek",
+                                contentDescription = stringResource(R.string.cd_toggle_controls),
                                 tint = themeColor,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -923,7 +925,7 @@ fun MagnifierMainScreen() {
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.SwitchCamera,
-                                        contentDescription = "Kamera váltás",
+                                        contentDescription = stringResource(R.string.cd_switch_camera),
                                         tint = themeColor,
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -941,20 +943,20 @@ fun MagnifierMainScreen() {
                                     
                                     val cameraLabel = if (activeCameraInfo != null) {
                                         when (activeCameraInfo.lensFacing) {
-                                            0 -> "Előlapi"
+                                            0 -> stringResource(R.string.camera_front)
                                             1 -> {
                                                 val backCameras = availableCameras.filter { it.lensFacing == 1 }
                                                 if (backCameras.size > 1) {
                                                     val idx = backCameras.indexOf(activeCameraInfo)
-                                                    "Hátlapi ${idx + 1}"
+                                                    stringResource(R.string.camera_back_n, idx + 1)
                                                 } else {
-                                                    "Hátlapi"
+                                                    stringResource(R.string.camera_back)
                                                 }
                                             }
-                                            else -> "Külső"
+                                            else -> stringResource(R.string.camera_external)
                                         }
                                     } else {
-                                        "Kamera"
+                                        stringResource(R.string.camera_generic)
                                     }
                                     
                                     Icon(
@@ -1016,7 +1018,7 @@ fun MagnifierMainScreen() {
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.ZoomIn,
-                                                contentDescription = "Nagyítás",
+                                                contentDescription = stringResource(R.string.tab_zoom),
                                                 tint = themeColor,
                                                 modifier = Modifier.size(18.dp)
                                             )
@@ -1034,7 +1036,7 @@ fun MagnifierMainScreen() {
                                                 ) {
                                                     Icon(
                                                         imageVector = Icons.Default.Memory,
-                                                        contentDescription = "Szoftveres",
+                                                        contentDescription = stringResource(R.string.cd_digital_zoom),
                                                         tint = Color(0xFFD0BCFF),
                                                         modifier = Modifier.size(12.dp)
                                                     )
@@ -1064,7 +1066,7 @@ fun MagnifierMainScreen() {
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.Remove,
-                                                contentDescription = "Csökkentés",
+                                                contentDescription = stringResource(R.string.cd_zoom_out),
                                                 tint = Color(0xFFE6E1E5),
                                                 modifier = Modifier.size(18.dp)
                                              )
@@ -1106,7 +1108,7 @@ fun MagnifierMainScreen() {
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.Add,
-                                                contentDescription = "Növelés",
+                                                contentDescription = stringResource(R.string.cd_zoom_in),
                                                 tint = Color(0xFFE6E1E5),
                                                 modifier = Modifier.size(18.dp)
                                             )
@@ -1188,7 +1190,7 @@ fun MagnifierMainScreen() {
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.ColorLens,
-                                            contentDescription = "Szűrők",
+                                            contentDescription = stringResource(R.string.tab_filters),
                                             tint = themeColor,
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -1265,7 +1267,7 @@ fun MagnifierMainScreen() {
                                                     if (selected) {
                                                         Icon(
                                                             imageVector = Icons.Default.Check,
-                                                            contentDescription = "Kiválasztva",
+                                                            contentDescription = stringResource(R.string.cd_selected),
                                                             tint = if (mode == FilterMode.MONOCHROME) Color.Black else Color.White,
                                                             modifier = Modifier.size(14.dp)
                                                         )
@@ -1292,7 +1294,7 @@ fun MagnifierMainScreen() {
                                         ) {
                                             Icon(
                                                 imageVector = if (isFrozen) Icons.Default.Contrast else Icons.Default.Exposure,
-                                                contentDescription = "Korrekció",
+                                                contentDescription = stringResource(R.string.tab_tune),
                                                 tint = themeColor,
                                                 modifier = Modifier.size(18.dp)
                                             )
@@ -1312,7 +1314,7 @@ fun MagnifierMainScreen() {
                                     ) {
                                         Icon(
                                             imageVector = if (isFrozen) Icons.Default.Contrast else Icons.Default.Exposure,
-                                            contentDescription = "Contrast icon",
+                                            contentDescription = stringResource(if (isFrozen) R.string.label_contrast else R.string.label_exposure),
                                             tint = themeColor,
                                             modifier = Modifier.size(18.dp)
                                         )
@@ -1352,7 +1354,7 @@ fun MagnifierMainScreen() {
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.LightMode,
-                                                contentDescription = "Brightness icon",
+                                                contentDescription = stringResource(R.string.label_brightness),
                                                 tint = themeColor,
                                                 modifier = Modifier.size(18.dp)
                                             )
@@ -1387,7 +1389,7 @@ fun MagnifierMainScreen() {
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.AutoAwesome,
-                                            contentDescription = "Sharpen strength icon",
+                                            contentDescription = stringResource(R.string.label_sharpen),
                                             tint = themeColor,
                                             modifier = Modifier.size(18.dp)
                                         )
@@ -1426,7 +1428,7 @@ fun MagnifierMainScreen() {
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Palette,
-                                            contentDescription = "Téma",
+                                            contentDescription = stringResource(R.string.tab_theme),
                                             tint = themeColor,
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -1469,7 +1471,7 @@ fun MagnifierMainScreen() {
                                                     if (selected) {
                                                         Icon(
                                                             imageVector = Icons.Default.Check,
-                                                            contentDescription = "Kiválasztva",
+                                                            contentDescription = stringResource(R.string.cd_selected),
                                                             tint = Color.Black,
                                                             modifier = Modifier.size(14.dp)
                                                         )
@@ -1516,7 +1518,7 @@ fun MagnifierMainScreen() {
                         ) {
                             Icon(
                                 imageVector = if (torchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
-                                contentDescription = "Zseblámpa",
+                                contentDescription = stringResource(R.string.cd_torch),
                                 tint = if (torchEnabled) Color.Black else Color.White,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -1580,7 +1582,7 @@ fun MagnifierMainScreen() {
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Save,
-                                contentDescription = "Mentés",
+                                contentDescription = stringResource(R.string.cd_save),
                                 tint = Color.White,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -1647,7 +1649,7 @@ fun MagnifierMainScreen() {
                             ) {
                                 Icon(
                                     imageVector = if (isFrozen) Icons.Default.PlayArrow else Icons.Default.Pause,
-                                    contentDescription = if (isFrozen) "Folytatás" else "Kimerevítés",
+                                    contentDescription = stringResource(if (isFrozen) R.string.cd_resume else R.string.cd_freeze),
                                     tint = Color.Black,
                                     modifier = Modifier.size(32.dp)
                                 )
@@ -1697,7 +1699,7 @@ fun MagnifierMainScreen() {
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Share,
-                                contentDescription = "Megosztás",
+                                contentDescription = stringResource(R.string.cd_share),
                                 tint = Color.White,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -1715,10 +1717,10 @@ fun MagnifierMainScreen() {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         val tabs = listOf(
-                            Pair(Icons.Default.ZoomIn, "NAGYÍTÁS"),
-                            Pair(Icons.Default.ColorLens, "SZŰRŐK"),
-                            Pair(Icons.Default.Tune, "KORREKCIÓ"),
-                            Pair(Icons.Default.Palette, "TÉMA")
+                            Pair(Icons.Default.ZoomIn, stringResource(R.string.tab_zoom)),
+                            Pair(Icons.Default.ColorLens, stringResource(R.string.tab_filters)),
+                            Pair(Icons.Default.Tune, stringResource(R.string.tab_tune)),
+                            Pair(Icons.Default.Palette, stringResource(R.string.tab_theme))
                         )
                         
                         tabs.forEachIndexed { index, (icon, label) ->
@@ -1787,14 +1789,14 @@ fun MagnifierMainScreen() {
                     ) {
                         Icon(
                             imageVector = toastIcon,
-                            contentDescription = "Notification primary",
+                            contentDescription = stringResource(R.string.cd_notification),
                             tint = Color.White,
                             modifier = Modifier.size(24.dp)
                         )
                         toastSubIcon?.let { subIcon ->
                             Icon(
                                 imageVector = subIcon,
-                                contentDescription = "Notification secondary",
+                                contentDescription = stringResource(R.string.cd_notification_detail),
                                 tint = Color.White,
                                 modifier = Modifier.size(18.dp)
                             )
