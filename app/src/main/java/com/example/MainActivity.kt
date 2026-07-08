@@ -5,6 +5,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.net.Uri
@@ -22,6 +23,8 @@ import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -142,6 +145,38 @@ suspend fun <T> awaitListenableFuture(
         }
     }, androidx.core.content.ContextCompat.getMainExecutor(context))
 }
+
+private class CapturedJpeg(val bytes: ByteArray, val rotationDegrees: Int)
+
+// Natív felbontású still capture JPEG byte-okként; hibánál null — a hívó a
+// preview-snapshotra esik vissza, a felhasználó felé nincs külön hibaút.
+private suspend fun awaitCapturedJpeg(imageCapture: ImageCapture, context: Context): CapturedJpeg? =
+    suspendCoroutine { continuation ->
+        imageCapture.takePicture(
+            androidx.core.content.ContextCompat.getMainExecutor(context),
+            object : ImageCapture.OnImageCapturedCallback() {
+                override fun onCaptureSuccess(image: ImageProxy) {
+                    val result = try {
+                        val buffer = image.planes[0].buffer
+                        val bytes = ByteArray(buffer.remaining())
+                        buffer.get(bytes)
+                        CapturedJpeg(bytes, image.imageInfo.rotationDegrees)
+                    } catch (t: Throwable) {
+                        Log.e("Magnifier", "Failed to read captured image", t)
+                        null
+                    } finally {
+                        image.close()
+                    }
+                    continuation.resume(result)
+                }
+
+                override fun onError(exception: ImageCaptureException) {
+                    Log.e("Magnifier", "High-res capture failed", exception)
+                    continuation.resume(null)
+                }
+            }
+        )
+    }
 
 fun getOpticalSteps(context: Context, minZoom: Float, maxZoom: Float): List<Float> {
     val steps = mutableSetOf<Float>()
@@ -1934,21 +1969,38 @@ fun MagnifierMainScreen() {
                                             frozenScale = 1.0f
                                             frozenOffset = Offset.Zero
                                         } else {
-                                            isProcessing = true
                                             val bmp = previewView.bitmap
                                             if (bmp != null) {
+                                                // Azonnali fagyasztás a preview-snapshottal, hogy ne legyen érzékelhető késleltetés
                                                 rawFrozenBitmap = bmp
                                                 isFrozen = true
                                                 // Transfer current extra digital zoom and pan seamlessly to the frozen frame view
                                                 frozenScale = extraDigitalZoom
                                                 frozenOffset = extraDigitalPan
+
+                                                // Háttérben natív felbontású still capture, ami megérkezéskor lecseréli a snapshotot
+                                                val capture = imageCapture
+                                                val targetAspect = if (bmp.height > 0) bmp.width.toFloat() / bmp.height.toFloat() else 0f
+                                                if (capture != null) {
+                                                    coroutineScope.launch {
+                                                        val jpeg = awaitCapturedJpeg(capture, context)
+                                                        val hiRes = jpeg?.let {
+                                                            withContext(Dispatchers.Default) {
+                                                                decodeCapturedJpeg(it.bytes, it.rotationDegrees, targetAspect)
+                                                            }
+                                                        }
+                                                        // Csak akkor cserélünk, ha még ugyanez a fagyasztás él
+                                                        if (hiRes != null && isFrozen && rawFrozenBitmap === bmp) {
+                                                            rawFrozenBitmap = hiRes
+                                                        }
+                                                    }
+                                                }
                                             } else {
                                                 toastIcon = Icons.Default.Pause
                                                 toastSubIcon = Icons.Default.Error
                                                 toastColor = Color(0xFFEF4444) // red
                                                 showSavedToast = true
                                             }
-                                            isProcessing = false
                                         }
                                     }
                                     .testTag("freeze_toggle_button"),
@@ -2190,6 +2242,59 @@ fun computeVisibleCropRect(width: Int, height: Int, scale: Float, panX: Float, p
     val left = ((width / 2f - panX / scale) - cropW / 2f).roundToInt().coerceIn(0, width - cropW)
     val top = ((height / 2f - panY / scale) - cropH / 2f).roundToInt().coerceIn(0, height - cropH)
     return android.graphics.Rect(left, top, left + cropW, top + cropH)
+}
+
+// Középre igazított vágás a cél-képarányra (a preview FILL_CENTER kivágásának megfelelően)
+fun computeAspectCropRect(width: Int, height: Int, targetAspect: Float): android.graphics.Rect {
+    if (width <= 0 || height <= 0 || targetAspect <= 0f) {
+        return android.graphics.Rect(0, 0, width, height)
+    }
+    val srcAspect = width.toFloat() / height.toFloat()
+    return if (srcAspect > targetAspect) {
+        val cropW = (height * targetAspect).roundToInt().coerceIn(1, width)
+        val left = (width - cropW) / 2
+        android.graphics.Rect(left, 0, left + cropW, height)
+    } else {
+        val cropH = (width / targetAspect).roundToInt().coerceIn(1, height)
+        val top = (height - cropH) / 2
+        android.graphics.Rect(0, top, width, top + cropH)
+    }
+}
+
+// Legkisebb 2-hatvány mintavételezés, amellyel a leghosszabb oldal maxDim alá kerül (OOM-védelem)
+fun computeInSampleSize(width: Int, height: Int, maxDim: Int): Int {
+    if (maxDim <= 0) return 1
+    var sampleSize = 1
+    while (maxOf(width, height) / sampleSize > maxDim) {
+        sampleSize *= 2
+    }
+    return sampleSize
+}
+
+// A still capture JPEG dekódolása memória-plafonnal, a viewport képarányára vágva, majd a
+// kijelző tájolására forgatva. A vágás a forgatás ELŐTT történik (90/270 foknál invertált
+// cél-aspecttel), így a forgatandó bitmap kisebb.
+fun decodeCapturedJpeg(bytes: ByteArray, rotationDegrees: Int, targetAspect: Float, maxDim: Int = 4096): Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+    val options = BitmapFactory.Options().apply {
+        inSampleSize = computeInSampleSize(bounds.outWidth, bounds.outHeight, maxDim)
+    }
+    var bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) ?: return null
+
+    val bufferAspect = if (rotationDegrees % 180 != 0 && targetAspect > 0f) 1f / targetAspect else targetAspect
+    val crop = computeAspectCropRect(bitmap.width, bitmap.height, bufferAspect)
+    if (crop.width() < bitmap.width || crop.height() < bitmap.height) {
+        bitmap = Bitmap.createBitmap(bitmap, crop.left, crop.top, crop.width(), crop.height())
+    }
+
+    if (rotationDegrees != 0) {
+        val matrix = android.graphics.Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+        bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
+    return bitmap
 }
 
 // Pan-eltolás korlátozása úgy, hogy a nagyított tartalom széle ne szakadjon el a viewport szélétől

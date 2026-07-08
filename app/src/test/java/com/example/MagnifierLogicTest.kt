@@ -1,15 +1,22 @@
 package com.example
 
+import android.graphics.Bitmap
+import android.graphics.Color
 import android.graphics.Rect
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.IntSize
+import java.io.ByteArrayOutputStream
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [36])
 class MagnifierLogicTest {
 
@@ -137,5 +144,91 @@ class MagnifierLogicTest {
         val v = buildFilterMatrixValues(FilterMode.INVERTED, 2.0f, 0.0f)
         assertEquals(-2f, v[0], delta)
         assertEquals(510f, v[4], delta)
+    }
+
+    // --- computeInSampleSize ---
+
+    @Test
+    fun `inSampleSize plafon alatt egy`() {
+        assertEquals(1, computeInSampleSize(1920, 1080, 4096))
+    }
+
+    @Test
+    fun `inSampleSize pontosan a plafonon egy`() {
+        assertEquals(1, computeInSampleSize(4096, 3072, 4096))
+    }
+
+    @Test
+    fun `inSampleSize nagy kepnel ketto hatvanya`() {
+        assertEquals(2, computeInSampleSize(8000, 6000, 4096))
+        assertEquals(4, computeInSampleSize(16000, 12000, 4096))
+    }
+
+    @Test
+    fun `inSampleSize ervenytelen plafonnal egy`() {
+        assertEquals(1, computeInSampleSize(8000, 6000, 0))
+    }
+
+    // --- computeAspectCropRect ---
+
+    @Test
+    fun `aspect crop szelesebb forrasbol fuggoleges savot vag kozepen`() {
+        assertEquals(Rect(1250, 0, 2750, 3000), computeAspectCropRect(4000, 3000, 0.5f))
+    }
+
+    @Test
+    fun `aspect crop magasabb forrasbol vizszintes savot vag kozepen`() {
+        assertEquals(Rect(0, 1000, 1000, 2000), computeAspectCropRect(1000, 3000, 1.0f))
+    }
+
+    @Test
+    fun `aspect crop egyezo aranynal teljes kep`() {
+        assertEquals(Rect(0, 0, 1000, 2000), computeAspectCropRect(1000, 2000, 0.5f))
+    }
+
+    @Test
+    fun `aspect crop ervenytelen cel-aspectnel teljes kep`() {
+        assertEquals(Rect(0, 0, 1000, 2000), computeAspectCropRect(1000, 2000, 0f))
+    }
+
+    // --- decodeCapturedJpeg ---
+
+    private fun jpegBytes(width: Int, height: Int): ByteArray {
+        val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        bmp.eraseColor(Color.rgb(120, 80, 40))
+        val out = ByteArrayOutputStream()
+        bmp.compress(Bitmap.CompressFormat.JPEG, 90, out)
+        return out.toByteArray()
+    }
+
+    @Test
+    fun `decode forgatas nelkul a cel-aspectre vag`() {
+        val bmp = decodeCapturedJpeg(jpegBytes(400, 200), 0, 1.0f)
+        assertNotNull(bmp)
+        assertEquals(200, bmp!!.width)
+        assertEquals(200, bmp.height)
+    }
+
+    @Test
+    fun `decode 90 fokos forgatasnal a cel-aspect a forgatas utan ervenyesul`() {
+        // 400x200 buffer, 90° forgatás, cél 0.5 (álló) → bufferben invertált cél (2.0),
+        // vágás nem kell, forgatás után 200x400
+        val bmp = decodeCapturedJpeg(jpegBytes(400, 200), 90, 0.5f)
+        assertNotNull(bmp)
+        assertEquals(200, bmp!!.width)
+        assertEquals(400, bmp.height)
+    }
+
+    @Test
+    fun `decode maxDim ala mintavetelez`() {
+        val bmp = decodeCapturedJpeg(jpegBytes(400, 200), 0, 2.0f, maxDim = 100)
+        assertNotNull(bmp)
+        assertEquals(100, bmp!!.width)
+        assertEquals(50, bmp.height)
+    }
+
+    @Test
+    fun `decode ervenytelen bajtokra nullt ad`() {
+        assertNull(decodeCapturedJpeg(byteArrayOf(1, 2, 3), 0, 1.0f))
     }
 }
