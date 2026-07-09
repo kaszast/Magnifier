@@ -40,9 +40,120 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-// Az alsó vezérlőkártya tab-tartalmai. Az állapotot a MagnifierMainScreen tartja; ezek a
-// composable-ök a szükséges értékeket paraméterként, a módosításokat hoistolt lambdaként kapják.
+// =============================================================================
+//  ControlPanels.kt — Az alsó vezérlőkártya négy fülének (tab) tartalma
+// =============================================================================
+//
+// MI EZ A FÁJL?
+// A nagyító képernyő alján egy kártya (card) ül, amelyen négy fül (tab)
+// váltogatható. Mindegyik fül tartalmát egy-egy külön @Composable függvény
+// írja le ebben a fájlban:
+//   1. ZoomTabContent    — nagyítás: zoom csúszka, +/- gombok, gyors preset-ek
+//   2. FiltersTabContent — színszűrők: normál, monokróm, invertált, sárga, piros
+//   3. TuneTabContent    — korrekció: EV/kontraszt, fényerő és élesítés csúszkák
+//   4. ThemeTabContent   — téma: az app akcentusszínének kiválasztása
+//
+// --- ALAPFOGALOM: @Composable függvény ---
+// A @Composable annotáció jelöli, hogy a függvény nem hagyományos "hívd meg,
+// térj vissza egy értékkel" függvény, hanem UI-t ír le. A Compose futásidőben
+// hívja meg, és ha egy bemenő érték megváltozik, ÚJRA lefuttatja (ezt hívják
+// recomposition-nek), hogy a képernyő mindig kövesse az állapotot. Emiatt egy
+// Composable-nek gyorsnak és mellékhatás-mentesnek kell lennie.
+//
+// --- ALAPFOGALOM: state hoisting (állapot-felemelés) ---
+// Figyeld meg: EGYETLEN itteni composable sem tárol saját belső állapotot
+// (nincs bennük remember { mutableStateOf(...) }). Minden érték PARAMÉTERKÉNT
+// érkezik lefelé (pl. `frozenScale: Float`), a módosítás pedig egy
+// `on...Change: (T) -> Unit` lambdán keresztül megy VISSZAFELÉ a hívóhoz
+// (pl. `onFrozenScaleChange`). Ezt hívják "state hoisting"-nak: az állapotot
+// feljebb, a közös szülőbe (MagnifierMainScreen) "emeljük". Előnyök:
+//   * Single source of truth — az állapot egy helyen él, nincs kettőződés.
+//   * Tesztelhetőség — a composable így tiszta függvény: adott bemenetre adott
+//     UI; a teszt könnyen ellenőrzi, hogy kattintásra meghívódik-e a lambda.
+//   * Újrafelhasználhatóság — a komponens nem kötődik konkrét adatforráshoz.
+// Ez a "unidirectional data flow" (egyirányú adatáramlás): adat LE (paraméter),
+// esemény FEL (lambda).
+//
+// --- ALAPFOGALOM: Modifier és a láncolható (chainable) modifier-ek ---
+// A Modifier a Compose "díszítő szalagja": méret, háttér, keret, kattintás,
+// térköz stb. egyetlen láncba fűzve adható egy composable-nek. A SORREND
+// SZÁMÍT, mert minden modifier az ELŐZŐEK eredményére épül. Példa (lentebb így
+// szerepel a kód):
+//   Modifier.size(48.dp).background(...).border(...).clickable{}.padding(...)
+//   -> előbb 48dp-s négyzet, ARRA háttér, ARRA keret, a keretezett terület
+//      lesz kattintható, végül BELÜL padding. Ha a padding a background ELÉ
+//      kerülne, a háttér a padding-gel csökkentett kisebb területre festődne.
+// Gyakori tagok, amiket itt látsz:
+//   * .size(dp) / .width / .height — fix méret
+//   * .weight(1f) (csak Row/Column gyerekén) — arányos helykitöltés a
+//     testvérekkel osztozva (a fennmaradó helyet súly szerint osztja szét)
+//   * .background(color/brush, shape) — kitöltés adott alakzattal
+//   * .border(width, color, shape) — keret
+//   * .clickable { } — kattintás-kezelő (a { } a kattintás eseménye)
+//   * .padding(...) — belső térköz
+//
+// --- ALAPFOGALOM: layout-composable-ök ---
+//   * Column — a gyermekeket FÜGGŐLEGESEN pakolja egymás alá.
+//   * Row    — a gyermekeket VÍZSZINTESEN pakolja egymás mellé.
+//   * Box    — a gyermekeket EGYMÁSRA rétegezi (z-tengely); a pozíciót a
+//              contentAlignment adja meg.
+//   * BoxWithConstraints — mint a Box, de a tartalma lekérdezheti a
+//              rendelkezésre álló méretet (maxWidth/maxHeight), így reszponzív
+//              döntést hozhatunk (lásd a preset-gombokat lentebb).
+//   * Arrangement — a FŐ tengelyen osztja el a helyet/térközt
+//              (pl. Arrangement.spacedBy(8.dp), Arrangement.SpaceBetween).
+//   * Alignment — a KERESZT-tengelyen igazít (pl. Alignment.CenterVertically,
+//              Alignment.CenterHorizontally, Alignment.Center).
+//
+// --- ALAPFOGALOM: stringResource(...) és @StringRes ---
+// A felhasználónak látszó szövegek NEM stringliterálként élnek a kódban, hanem
+// a res/values/strings.xml-ben, és R.string.* azonosítóval hivatkozunk rájuk.
+// A stringResource(R.string.xxx) futásidőben feloldja az aktuális nyelvre ->
+// ez teszi lehetővé a lokalizációt (localization) és a szövegek egy helyen
+// tartását. A @StringRes annotáció egy Int paraméterről jelzi a fordítónak,
+// hogy az string-erőforrás azonosító (típusbiztonság).
+//
+// --- ALAPFOGALOM: .testTag("...") ---
+// Stabil, általunk megadott azonosító egy UI-elemen, amire az automata
+// (instrumented) UI-teszt hivatkozhat (pl. onNodeWithTag("zoom_slider")). A
+// felhasználó nem látja; kizárólag a teszteknek szól.
+//
+// Színek: a paletta többnyire hardcode-olt hex-kód (pl. Color(0xFF1B1A21) a
+// sötét háttér), a `themeColor` pedig a felhasználó által választott
+// akcentusszín, amit a szülő ad át minden fülnek.
+// =============================================================================
 
+/**
+ * NAGYÍTÁS FÜL tartalma. Megjeleníti (fentről lefelé):
+ *  - egy fejlécsort: zoom-ikon + verziószám + (ha digitális zoom-tartományban
+ *    vagyunk) egy kis chip/jelvény "Memory" ikonnal;
+ *  - egy vezérlősort: [-] gomb, zoom-csúszka, [+] gomb, jobbra az aktuális
+ *    "x.x" nagyítás felirat;
+ *  - egy sor gyors preset-gombot (pl. 1x, 2x, 5x...), amennyi kifér.
+ *
+ * A teljes nagyítás forrása kétféle lehet: befagyasztott képnél a `frozenScale`,
+ * élő kameránál a `liveZoomRatio * extraDigitalZoom` szorzat.
+ *
+ * Paraméterek (mind hoistolt — az állapotot a szülő tartja, lásd a fájl fejlécét):
+ *  @param appVersion         a kiírt verziószám (pl. "1.2.3")
+ *  @param themeColor         aktuális akcentusszín (ikonok, csúszka, kijelölés)
+ *  @param isFrozen           igaz, ha a kép be van fagyasztva (állókép); ilyenkor
+ *                            a zoom a rögzített képre nagyít, nem a kamerára
+ *  @param frozenScale        a befagyasztott kép aktuális nagyítása
+ *  @param onFrozenScaleChange visszahívás a frozenScale megváltoztatására
+ *  @param liveZoomRatio      az élő kamera hardveres zoom-aránya (setZoomRatio)
+ *  @param extraDigitalZoom   az ezen felüli digitális (szoftveres) ráközelítés szorzója
+ *  @param maxZoom            a hardver által még natívan támogatott max. zoom
+ *                            (efölött már digitális tartományban vagyunk)
+ *  @param sliderMin          a csúszka minimuma
+ *  @param sliderMax          a csúszka maximuma
+ *  @param presets            a felkínált gyors-zoom értékek listája
+ *  @param onApplyTotalZoom   (target, resetPan) -> Unit: állítsd a TELJES zoomot
+ *                            a `target` célértékre; a szülő szétosztja hardveres
+ *                            és digitális részre. Ha resetPan=true, a pásztázás
+ *                            (pan) is nullázódjon — preset-választásnál true,
+ *                            a csúszka húzásánál false.
+ */
 @Composable
 fun ZoomTabContent(
     appVersion: String,
@@ -58,35 +169,56 @@ fun ZoomTabContent(
     presets: List<Float>,
     onApplyTotalZoom: (Float, Boolean) -> Unit,
 ) {
+    // A fül tartalma egy függőleges oszlop, amely a teljes szélességet kitölti
+    // (fillMaxWidth), és a gyermeksorok közé egységes 8dp térközt tesz.
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        // A megjelenített "aktuális teljes nagyítás": befagyasztott képnél a
+        // frozenScale, élő kameránál a hardveres és digitális rész szorzata.
         val currentTotalZoom = if (isFrozen) frozenScale else (liveZoomRatio * extraDigitalZoom)
+        // Digitális tartományban vagyunk-e? Csak élő módban értelmes, és akkor,
+        // ha a teljes zoom túllépi a hardver max. zoomját -> a plusz nagyítás már
+        // szoftveres (digitális). Ez kapcsolja be lentebb a kis "Memory" jelvényt.
         val isDigitalRange = !isFrozen && (liveZoomRatio * extraDigitalZoom > maxZoom)
 
+        // Fejlécsor. A külső Row a teljes szélességen SpaceBetween-nel osztaná el
+        // a gyermekeit (bal/jobb szélre), itt csak egyetlen bal oldali csoport van.
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Bal csoport: zoom-ikon + verzió + (feltételes) digitális-zoom jelvény,
+            // egymás mellett 6dp térközzel, függőlegesen középre igazítva.
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
+                // Icon: vektoros piktogram. Az imageVector a rajz, a tint a
+                // színezés, a contentDescription pedig a képernyőolvasónak
+                // (akadálymentesítés) szóló szöveg — erőforrásból, lokalizálva.
                 Icon(
                     imageVector = Icons.Default.ZoomIn,
                     contentDescription = stringResource(R.string.tab_zoom),
                     tint = themeColor,
                     modifier = Modifier.size(18.dp)
                 )
+                // Text: egyszerű feliratkomponens. Itt a verziószám kis, félkövér.
                 Text(
                     text = "v$appVersion",
                     color = themeColor,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
+                // Csak digitális tartományban jelenik meg: halvány lila hátterű,
+                // lekerekített kis "chip", benne a memóriachip (digitális) ikon.
                 if (isDigitalRange) {
+                    // Modifier-sorrend: előbb a lekerekített háttér (RoundedCornerShape
+                    // = lekerekített sarkú téglalap), UTÁNA padding. Így a padding a
+                    // háttéren BELÜL képez térközt az ikon körül. Fordított sorrendben
+                    // a háttér a padding mögé, kisebb területre festődne.
                     Box(
                         modifier = Modifier
                             .background(Color(0xFFD0BCFF).copy(alpha = 0.15f), RoundedCornerShape(4.dp))
@@ -103,11 +235,18 @@ fun ZoomTabContent(
             }
         }
 
+        // Fő vezérlősor: [-] kör-gomb | csúszka | [+] kör-gomb | érték-felirat.
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            // [-] gomb: 48dp-s kör (CircleShape = teljes kör alakzat), sötét
+            // háttérrel és vékony kerettel. A .clickable a Box egészét kattinthatóvá
+            // teszi; kattintásra 0.5x-zel csökkenti a nagyítást. Befagyasztott képnél
+            // közvetlenül a frozenScale-t állítja (min. 0.5x), élőben a teljes zoom
+            // célértékét adja tovább a szülőnek (pásztázás nem nullázódik: false).
+            // A contentAlignment.Center a benti ikont a kör közepére helyezi.
             Box(
                 modifier = Modifier
                     .size(48.dp)
@@ -130,6 +269,12 @@ fun ZoomTabContent(
                  )
             }
 
+            // Slider: húzható csúszka. `value` az aktuális pozíció (coerceIn a
+            // tartományba szorítja, hogy sose fusson ki a sávból), `valueRange` a
+            // min..max, `onValueChange` pedig húzáskor hívódik az új értékkel — ez
+            // a hoistolt esemény "felfelé". A colors a téma szerinti sávszínek.
+            // .weight(1f): a csúszka kapja a sorban a gombok utáni MARADÉK helyet.
+            // .testTag("zoom_slider"): fogódzó az automata UI-teszteknek.
             Slider(
                 value = currentTotalZoom.coerceIn(sliderMin, sliderMax),
                 onValueChange = { newValue ->
@@ -150,6 +295,8 @@ fun ZoomTabContent(
                     .testTag("zoom_slider")
             )
 
+            // [+] gomb: a [-] tükörképe, 0.5x-zel NÖVELI a nagyítást (min()-nel a
+            // csúszka maximumára korlátozva befagyasztott módban).
             Box(
                 modifier = Modifier
                     .size(48.dp)
@@ -171,6 +318,9 @@ fun ZoomTabContent(
                     modifier = Modifier.size(18.dp)
                 )
             }
+            // Aktuális nagyítás szövege, pl. "2.5x". A widthIn(min = 55.dp) fix
+            // minimális szélességet ad, hogy a szám változásakor ne ugráljon a
+            // layout; a TextAlign.End jobbra igazít ezen a sávon belül.
             Text(
                 text = String.format("%.1fx", currentTotalZoom),
                 color = Color.White,
@@ -181,30 +331,48 @@ fun ZoomTabContent(
             )
         }
 
-        // Quick Presets (Non-scrollable, responsive fitting)
+        // Gyors preset-ek — NEM görgethető, hanem RESZPONZÍVAN annyi fér ki,
+        // amennyi. Ehhez BoxWithConstraints kell: ez a Box tudja megmondani a
+        // benti kódnak a rendelkezésre álló szélességet (maxWidth), amiből
+        // kiszámoljuk, hány gomb fér el, és csak annyit rajzolunk ki.
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val availableWidth = maxWidth
             val itemWidth = 52.dp
             val spacing = 6.dp
-            // Calculate how many items can fully fit in the available width:
-            // k * itemWidth + (k - 1) * spacing <= availableWidth
+            // Hány gomb fér ki hiánytalanul? A képlet a
+            //   k * itemWidth + (k - 1) * spacing <= availableWidth
+            // egyenlőtlenség átrendezése egész osztással; coerceAtLeast(1) miatt
+            // legalább egy gomb mindig látszik.
             val maxFit = ((availableWidth + spacing) / (itemWidth + spacing)).toInt().coerceAtLeast(1)
+            // Csak az első `maxFit` preset-et vesszük — a többi egyszerűen kimarad.
             val visiblePresets = presets.take(maxFit)
 
+            // A látható preset-ek egy sorban, a szélek közt egyenletesen elosztva.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 visiblePresets.forEach { preset ->
+                    // Ki van-e éppen választva ez a preset? Nem szigorú egyenlőség,
+                    // hanem 0.15x tűréssel: ha az aktuális nagyítás elég közel van a
+                    // preset értékéhez, kiemeltnek (selected) számít.
                     val isSelected = if (isFrozen) {
                         abs(frozenScale - preset) < 0.15f
                     } else {
                         abs((liveZoomRatio * extraDigitalZoom) - preset) < 0.15f
                     }
 
+                    // Élő módban csak azok a preset-ek elérhetők, amelyek beleférnek a
+                    // csúszka max-ába; a nem lehetségeseket egyszerűen ki sem rajzoljuk.
                     val isPresetPossible = isFrozen || preset <= sliderMax
                     if (isPresetPossible) {
+                        // Egy preset-gomb. A KIVÁLASZTOTT állapot vizuális jelzése a
+                        // színcsere: ha isSelected, a háttér és a keret a themeColor
+                        // (kiemelt), különben sötét háttér + halvány keret.
+                        // Kattintáskor preset-re ugrik: befagyasztva a frozenScale-t
+                        // állítja, élőben az onApplyTotalZoom(preset, true) — a true
+                        // itt azt jelenti, a pásztázás (pan) is nullázódjon.
                         Box(
                             modifier = Modifier
                                 .width(itemWidth)
@@ -224,6 +392,9 @@ fun ZoomTabContent(
                                 .padding(vertical = 8.dp),
                             contentAlignment = Alignment.Center
                          ) {
+                            // Felirat: egész értéknél "2x", törtnél "2.5x". A szöveg
+                            // színe kiemelt gombon fekete (a világos háttéren olvasható),
+                            // különben fehér.
                             Text(
                                 text = if (preset % 1.0f == 0.0f) String.format("%.0fx", preset) else String.format("%.1fx", preset),
                                 color = if (isSelected) Color.Black else Color.White,
@@ -238,6 +409,19 @@ fun ZoomTabContent(
     }
 }
 
+/**
+ * SZŰRŐK FÜL tartalma. Egy fejlécsor (paletta-ikon + verzió) alatt egymás
+ * mellett megjeleníti az összes elérhető színszűrő-módot (FilterMode enum:
+ * NORMAL, MONOCHROME, INVERTED, YELLOW, RED) egy-egy választható kártyaként.
+ * Minden kártyán egy színes minta-kör (gradiens) és a mód neve szerepel; a
+ * kiválasztott kártyán pipa jelenik meg, és a kerete/felirata a themeColor.
+ *
+ * Paraméterek (hoistolt):
+ *  @param appVersion         kiírt verziószám
+ *  @param themeColor         akcentusszín a kijelölés jelzésére
+ *  @param filterMode         az AKTUÁLISAN aktív szűrő (ez lesz "selected")
+ *  @param onFilterModeChange visszahívás: a felhasználó másik szűrőt választott
+ */
 @Composable
 fun FiltersTabContent(
     appVersion: String,
@@ -249,6 +433,7 @@ fun FiltersTabContent(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
+        // Fejlécsor: paletta-ikon + verzió (a mintázat minden fülnél azonos).
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -266,12 +451,18 @@ fun FiltersTabContent(
                 fontWeight = FontWeight.Bold
             )
         }
+        // A szűrő-kártyák sora. A FilterMode.values() az enum összes esetét adja;
+        // mindegyikből egy kártyát rajzolunk. A .weight(1f) minden kártyán azt
+        // jelenti, hogy EGYENLŐ arányban osztoznak a sor teljes szélességén.
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             FilterMode.values().forEach { mode ->
+                // Ez a kártya van-e kiválasztva? (az aktív filterMode-dal egyezik-e)
                 val selected = filterMode == mode
+                // Egy szűrő-kártya. weight(1f) -> egyenlő szélesség; heightIn ->
+                // legalább 52dp magas. A kiválasztott kártya háttere/kerete eltér.
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -289,10 +480,21 @@ fun FiltersTabContent(
                         .padding(vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
+                    // A kártya tartalma függőlegesen: felül a színminta-kör, alatta
+                    // a mód neve; vízszintesen középre igazítva, 4dp térközzel.
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
+                    // Színminta-kör. A háttér itt nem egyszínű, hanem Brush (ecset):
+                    // a Brush színátmenetet (gradient) tud festeni. Fajták, amiket
+                    // itt látsz:
+                    //   * Brush.sweepGradient(...) — körkörös "tortaszelet" átmenet
+                    //     a szivárvány színeivel -> ez jelzi a NORMAL (szűrő nélküli,
+                    //     teljes színes) módot.
+                    //   * Brush.linearGradient(...) — egyenes vonal menti átmenet két
+                    //     szín közt; a többi mód jellegét mutatja (pl. fehér->fekete
+                    //     a monokrómnál). A shape = CircleShape kör alakúra vágja.
                     Box(
                         modifier = Modifier
                             .size(28.dp)
@@ -333,6 +535,9 @@ fun FiltersTabContent(
                             .border(1.dp, Color(0xFF2E2C33).copy(alpha = 0.5f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
+                        // A kiválasztott szűrő körén pipa jelenik meg. A pipa színe a
+                        // monokróm (világos hátterű) mintán fekete, egyébként fehér —
+                        // hogy mindig kontrasztos, olvasható maradjon.
                         if (selected) {
                             Icon(
                                 imageVector = Icons.Default.Check,
@@ -342,6 +547,9 @@ fun FiltersTabContent(
                             )
                         }
                     }
+                    // A szűrő neve. A szöveg az enum labelRes erőforrásából jön
+                    // (lokalizált). Kiválasztva a themeColor-t kapja, különben halvány
+                    // szürkét; maxLines = 1 miatt egy sorban marad.
                     Text(
                         text = stringResource(mode.labelRes),
                         color = if (selected) themeColor else Color(0xFFA1A1AA),
@@ -357,6 +565,30 @@ fun FiltersTabContent(
     }
 }
 
+/**
+ * KORREKCIÓ FÜL tartalma. A tartalma függ attól, él-e a kamera vagy be van
+ * fagyasztva a kép (isFrozen):
+ *  - ÉLŐ módban: expozíció (EV, egész lépésekben) csúszka + élesítés csúszka.
+ *  - BEFAGYASZTOTT módban: kontraszt csúszka + fényerő (brightness) csúszka +
+ *    élesítés csúszka.
+ * Vagyis az első csúszka "kettős célú": élőben az EV-t, fagyasztva a kontrasztot
+ * állítja; a fényerő-csúszka pedig csak fagyasztott képnél jelenik meg.
+ *
+ * Paraméterek (hoistolt; minden érték + hozzá tartozó on...Change lambda):
+ *  @param appVersion            kiírt verziószám
+ *  @param themeColor            akcentusszín az ikonokhoz/csúszkákhoz
+ *  @param isFrozen              él-e a kamera (false) vagy állókép (true)
+ *  @param contrast              kontraszt-szorzó (fagyasztott mód), 1.0..3.0
+ *  @param onContrastChange      kontraszt módosító visszahívás
+ *  @param brightness            fényerő-eltolás (fagyasztott mód), -80..80
+ *  @param onBrightnessChange    fényerő módosító visszahívás
+ *  @param exposureIndex         a kamera EV-indexe (élő mód), egész
+ *  @param onExposureIndexChange EV-index módosító visszahívás
+ *  @param minExposureIndex      a kamera által támogatott legkisebb EV-index
+ *  @param maxExposureIndex      a kamera által támogatott legnagyobb EV-index
+ *  @param sharpenStrength       élesítés (unsharp mask) erőssége, 0.0..10.0
+ *  @param onSharpenStrengthChange élesítés módosító visszahívás
+ */
 @Composable
 fun TuneTabContent(
     appVersion: String,
@@ -377,6 +609,8 @@ fun TuneTabContent(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
+        // Fejlécsor. Az ikon a móddal változik: fagyasztva kontraszt-ikon, élőben
+        // expozíció-ikon (a fül fő funkcióját tükrözi).
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -401,6 +635,8 @@ fun TuneTabContent(
             }
         }
 
+        // ELSŐ csúszkasor — "kettős célú": fagyasztva a KONTRASZTOT, élőben az
+        // EXPOZÍCIÓT (EV) állítja. Az ikon és a contentDescription is ehhez igazodik.
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -412,6 +648,11 @@ fun TuneTabContent(
                 tint = themeColor,
                 modifier = Modifier.size(18.dp)
             )
+            // value: fagyasztva a contrast (Float), élőben az egész EV-index Float-ra
+            // konvertálva. valueRange szintén a módtól függ (1.0..3.0 vs EV min..max).
+            // steps: ez adja a csúszka "kattanós" (diszkrét) viselkedését — az EV
+            // csak egész lépésekben mozogjon. A steps a KÖZTES osztáspontok száma,
+            // ezért (max - min - 1). Fagyasztva 0 = folytonos csúszka.
             Slider(
                 value = if (isFrozen) contrast else exposureIndex.toFloat(),
                 onValueChange = { newValue ->
@@ -430,6 +671,7 @@ fun TuneTabContent(
                 ),
                 modifier = Modifier.weight(1f)
             )
+            // Érték-felirat: fagyasztva "2.0x" (kontraszt), élőben "+1 EV" jellegű.
             Text(
                 text = if (isFrozen) String.format("%.1fx", contrast) else "$exposureIndex EV",
                 color = Color.White,
@@ -440,6 +682,8 @@ fun TuneTabContent(
             )
         }
 
+        // FÉNYERŐ csúszka — CSAK befagyasztott képnél jelenik meg (élő módban az
+        // expozíció tölti be ezt a szerepet, a fényerő utólagos, szoftveres eltolás).
         if (isFrozen) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -452,6 +696,7 @@ fun TuneTabContent(
                     tint = themeColor,
                     modifier = Modifier.size(18.dp)
                 )
+                // Folytonos csúszka -80..+80 tartományban (nincs steps).
                 Slider(
                     value = brightness,
                     onValueChange = { onBrightnessChange(it) },
@@ -463,6 +708,7 @@ fun TuneTabContent(
                     ),
                     modifier = Modifier.weight(1f)
                 )
+                // Előjeles kiírás (%+d): pl. "+15" vagy "-30", hogy az irány is látszódjon.
                 Text(
                     text = String.format("%+d", brightness.roundToInt()),
                     color = Color.White,
@@ -474,7 +720,9 @@ fun TuneTabContent(
             }
         }
 
-        // Dynamic Sharpening Strength Slider (available for both live digital zoom and frozen images)
+        // ÉLESÍTÉS (sharpen) csúszka — mindkét módban elérhető (élő digitális zoom és
+        // fagyasztott kép esetén is). A Spacer egy üres, 2dp magas térkitöltő elem,
+        // ami egy kis extra függőleges hézagot ad a fölötte lévő tartalomtól.
         Spacer(modifier = Modifier.height(2.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -487,6 +735,7 @@ fun TuneTabContent(
                 tint = themeColor,
                 modifier = Modifier.size(18.dp)
             )
+            // Folytonos csúszka 0..10 erősséggel; .testTag a UI-tesztnek.
             Slider(
                 value = sharpenStrength,
                 onValueChange = { onSharpenStrengthChange(it) },
@@ -500,6 +749,8 @@ fun TuneTabContent(
                     .weight(1f)
                     .testTag("sharpen_strength_slider")
             )
+            // Érték-felirat: nullánál egyszerűen "0.0" (kikapcsolt élesítés),
+            // egyébként "x.x" alakban az erősség.
             Text(
                 text = if (sharpenStrength == 0.0f) "0.0" else String.format("%.1fx", sharpenStrength),
                 color = Color.White,
@@ -512,6 +763,22 @@ fun TuneTabContent(
     }
 }
 
+/**
+ * TÉMA FÜL tartalma. Fejlécsor (paletta-ikon + verzió) alatt egymás mellett
+ * megjeleníti a választható akcentusszíneket (themeOptions), mindegyiket egy
+ * színes körrel és névvel. A jelenleg aktív téma kártyáján pipa látszik, és a
+ * kerete/felirata a téma saját színét kapja.
+ *
+ * Szerkezetileg szinte azonos a FiltersTabContent-tel; a fő különbség, hogy itt
+ * INDEX alapján azonosítjuk a kiválasztást (a téma egy listaelem), nem enum-mal.
+ *
+ * Paraméterek (hoistolt):
+ *  @param appVersion         kiírt verziószám
+ *  @param themeColor         az aktuális akcentusszín (a fejléc ikonjához/verzióhoz)
+ *  @param themeOptions       a választható témák listája (szín + név-erőforrás)
+ *  @param currentThemeIndex  a jelenleg kiválasztott téma indexe a listában
+ *  @param onThemeIndexChange visszahívás: a felhasználó másik témát választott (index)
+ */
 @Composable
 fun ThemeTabContent(
     appVersion: String,
@@ -541,12 +808,18 @@ fun ThemeTabContent(
                 fontWeight = FontWeight.Bold
             )
         }
+        // A téma-kártyák sora. forEachIndexed-del megyünk végig, mert a
+        // kiválasztást INDEX szerint azonosítjuk (currentThemeIndex).
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             themeOptions.forEachIndexed { index, option ->
+                // Ez az index-e a kiválasztott téma?
                 val selected = currentThemeIndex == index
+                // Egy téma-kártya. weight(1f) -> egyenlő szélesség. Kiválasztva a
+                // háttér a téma színének halvány (15% átlátszó) változata, a keret
+                // pedig a teli színe; egyébként sötét háttér + semleges keret.
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -564,16 +837,20 @@ fun ThemeTabContent(
                         .padding(vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
+                    // Kártya tartalma: felül a szín-kör, alatta a téma neve.
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
+                        // Egyszínű kör az adott téma színével (itt nincs gradiens,
+                        // csak sima háttérszín + CircleShape).
                         Box(
                             modifier = Modifier
                                 .size(28.dp)
                                 .background(option.color, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
+                            // A kiválasztott témán fekete pipa jelenik meg a körben.
                             if (selected) {
                                 Icon(
                                     imageVector = Icons.Default.Check,
@@ -583,6 +860,8 @@ fun ThemeTabContent(
                                 )
                             }
                         }
+                        // A téma neve az option.nameRes erőforrásból (lokalizált).
+                        // Kiválasztva a téma színét kapja, egyébként halvány szürkét.
                         Text(
                             text = stringResource(option.nameRes),
                             color = if (selected) option.color else Color(0xFFA1A1AA),
