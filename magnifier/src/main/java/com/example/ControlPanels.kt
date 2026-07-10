@@ -211,6 +211,7 @@ fun ZoomTabContent(
                 )
                 // Text: egyszerű feliratkomponens. Itt a verziószám kis, félkövér.
                 Text(
+                    text = "v$appVersion alfa",
                     color = themeColor,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
@@ -324,7 +325,6 @@ fun ZoomTabContent(
             // Aktuális nagyítás szövege, pl. "2.5x". A widthIn(min = 55.dp) fix
             // minimális szélességet ad, hogy a szám változásakor ne ugráljon a
             // layout; a TextAlign.End jobbra igazít ezen a sávon belül.
-            /*
             Text(
                 text = String.format("%.1fx", currentTotalZoom),
                 color = Color.White,
@@ -333,7 +333,6 @@ fun ZoomTabContent(
                 modifier = Modifier.widthIn(min = 55.dp),
                 textAlign = TextAlign.End
             )
-            */
         }
 
         // Gyors preset-ek — NEM görgethető, hanem RESZPONZÍVAN annyi fér ki,
@@ -400,14 +399,12 @@ fun ZoomTabContent(
                             // Felirat: egész értéknél "2x", törtnél "2.5x". A szöveg
                             // színe kiemelt gombon fekete (a világos háttéren olvasható),
                             // különben fehér.
-                            /*
                             Text(
                                 text = if (preset % 1.0f == 0.0f) String.format("%.0fx", preset) else String.format("%.1fx", preset),
                                 color = if (isSelected) Color.Black else Color.White,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
-                            */
                         }
                     }
                 }
