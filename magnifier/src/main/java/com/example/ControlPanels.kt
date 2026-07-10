@@ -211,7 +211,7 @@ fun ZoomTabContent(
                 )
                 // Text: egyszerű feliratkomponens. Itt a verziószám kis, félkövér.
                 Text(
-                    text = "v$appVersion",
+                    text = "v$appVersion alfa",
                     color = themeColor,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
@@ -325,6 +325,7 @@ fun ZoomTabContent(
             // Aktuális nagyítás szövege, pl. "2.5x". A widthIn(min = 55.dp) fix
             // minimális szélességet ad, hogy a szám változásakor ne ugráljon a
             // layout; a TextAlign.End jobbra igazít ezen a sávon belül.
+            /*
             Text(
                 text = String.format("%.1fx", currentTotalZoom),
                 color = Color.White,
@@ -333,6 +334,7 @@ fun ZoomTabContent(
                 modifier = Modifier.widthIn(min = 55.dp),
                 textAlign = TextAlign.End
             )
+            */
         }
 
         // Gyors preset-ek — NEM görgethető, hanem RESZPONZÍVAN annyi fér ki,
@@ -399,12 +401,14 @@ fun ZoomTabContent(
                             // Felirat: egész értéknél "2x", törtnél "2.5x". A szöveg
                             // színe kiemelt gombon fekete (a világos háttéren olvasható),
                             // különben fehér.
+                            /*
                             Text(
                                 text = if (preset % 1.0f == 0.0f) String.format("%.0fx", preset) else String.format("%.1fx", preset),
                                 color = if (isSelected) Color.Black else Color.White,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
+                            */
                         }
                     }
                 }
@@ -449,7 +453,7 @@ fun FiltersTabContent(
                 modifier = Modifier.size(16.dp)
             )
             Text(
-                text = "v$appVersion",
+                text = "v$appVersion alfa",
                 color = themeColor,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold
@@ -554,6 +558,7 @@ fun FiltersTabContent(
                     // A szűrő neve. A szöveg az enum labelRes erőforrásából jön
                     // (lokalizált). Kiválasztva a themeColor-t kapja, különben halvány
                     // szürkét; maxLines = 1 miatt egy sorban marad.
+                    /*
                     Text(
                         text = stringResource(mode.labelRes),
                         color = if (selected) themeColor else Color(0xFFA1A1AA),
@@ -562,6 +567,7 @@ fun FiltersTabContent(
                         maxLines = 1,
                         textAlign = TextAlign.Center
                     )
+                    */
                     }
                 }
             }
@@ -631,7 +637,7 @@ fun TuneTabContent(
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
-                    text = "v$appVersion",
+                    text = "v$appVersion alfa",
                     color = themeColor,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
@@ -676,6 +682,7 @@ fun TuneTabContent(
                 modifier = Modifier.weight(1f)
             )
             // Érték-felirat: fagyasztva "2.0x" (kontraszt), élőben "+1 EV" jellegű.
+            /*
             Text(
                 text = if (isFrozen) String.format("%.1fx", contrast) else "$exposureIndex EV",
                 color = Color.White,
@@ -684,6 +691,7 @@ fun TuneTabContent(
                 modifier = Modifier.widthIn(min = 55.dp),
                 textAlign = TextAlign.End
             )
+            */
         }
 
         // FÉNYERŐ csúszka — CSAK befagyasztott képnél jelenik meg (élő módban az
@@ -713,6 +721,7 @@ fun TuneTabContent(
                     modifier = Modifier.weight(1f)
                 )
                 // Előjeles kiírás (%+d): pl. "+15" vagy "-30", hogy az irány is látszódjon.
+                /*
                 Text(
                     text = String.format("%+d", brightness.roundToInt()),
                     color = Color.White,
@@ -721,6 +730,7 @@ fun TuneTabContent(
                     modifier = Modifier.widthIn(min = 55.dp),
                     textAlign = TextAlign.End
                 )
+                */
             }
         }
 
@@ -759,6 +769,7 @@ fun TuneTabContent(
                     .testTag("sharpen_strength_slider")
             )
             // Érték-felirat: a csúszka aktuális állását mutatja húzás közben is.
+            /*
             Text(
                 text = if (draggingValue == 0.0f) "0.0" else String.format("%.1fx", draggingValue),
                 color = Color.White,
@@ -767,6 +778,7 @@ fun TuneTabContent(
                 modifier = Modifier.widthIn(min = 55.dp),
                 textAlign = TextAlign.End
             )
+            */
         }
     }
 }
@@ -810,7 +822,7 @@ fun ThemeTabContent(
                 modifier = Modifier.size(16.dp)
             )
             Text(
-                text = "v$appVersion",
+                text = "v$appVersion alfa",
                 color = themeColor,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold
@@ -870,6 +882,7 @@ fun ThemeTabContent(
                         }
                         // A téma neve az option.nameRes erőforrásból (lokalizált).
                         // Kiválasztva a téma színét kapja, egyébként halvány szürkét.
+                        /*
                         Text(
                             text = stringResource(option.nameRes),
                             color = if (selected) option.color else Color(0xFFA1A1AA),
@@ -878,6 +891,7 @@ fun ThemeTabContent(
                             maxLines = 1,
                             textAlign = TextAlign.Center
                         )
+                        */
                     }
                 }
             }

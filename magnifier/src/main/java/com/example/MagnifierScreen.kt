@@ -200,6 +200,7 @@ fun NoCameraScreen() {
             
             Spacer(modifier = Modifier.height(28.dp))
             
+            /*
             Text(
                 text = stringResource(R.string.no_camera_title),
                 style = MaterialTheme.typography.headlineMedium,
@@ -217,6 +218,7 @@ fun NoCameraScreen() {
                 textAlign = TextAlign.Center,
                 lineHeight = 24.sp
             )
+            */
             
             Spacer(modifier = Modifier.height(40.dp))
             
@@ -250,11 +252,13 @@ fun NoCameraScreen() {
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(10.dp))
+                    /*
                     Text(
                         text = stringResource(R.string.action_close),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
+                    */
                 }
             }
         }

@@ -229,15 +229,19 @@ fun ZoomMinimap(
                 val centerYFraction = 0.5f - (pan.y / (scale * wHeight))
 
                 // Az arányokat átváltjuk a Canvas konkrét pixelméreteire.
-                val rectW = canvasW * boxWidthFraction
-                val rectH = canvasH * boxHeightFraction
+                // Ha a nagyítás 1x alatti (pl. 0.5x), a kivágás nagyobb lenne, mint a kép,
+                // ezért ilyenkor a teljes minimap-et (canvasW/H) tekintjük aktívnak.
+                val rectW = (canvasW * boxWidthFraction).coerceAtMost(canvasW)
+                val rectH = (canvasH * boxHeightFraction).coerceAtMost(canvasH)
 
                 // A téglalap bal-felső sarka = középpont mínusz a fél oldalhossz.
                 // A coerceIn(0f, canvas - rect) beszorítja az értéket az érvényes
                 // tartományba, hogy a téglalap sose lógjon ki a minimap széléből
                 // (a szélek elérésekor "megáll", nem csúszik tovább).
-                val rectX = ((canvasW * centerXFraction) - (rectW / 2f)).coerceIn(0f, canvasW - rectW)
-                val rectY = ((canvasH * centerYFraction) - (rectH / 2f)).coerceIn(0f, canvasH - rectH)
+                // A .coerceAtLeast(0f) véd az IllegalArgumentException ellen, ha a
+                // számítási pontatlanság vagy 1x alatti zoom miatt a max < 0 lenne.
+                val rectX = ((canvasW * centerXFraction) - (rectW / 2f)).coerceIn(0f, (canvasW - rectW).coerceAtLeast(0f))
+                val rectY = ((canvasH * centerYFraction) - (rectH / 2f)).coerceIn(0f, (canvasH - rectH).coerceAtLeast(0f))
 
                 // A kívül eső (nem látható) rész elsötétítése.
                 // MIÉRT: a fő nézetben csak a viewport-téglalapon belüli részt látja a
@@ -662,6 +666,7 @@ fun ControlTabBar(
                         tint = if (selected) themeColor else Color(0xFFE6E1E5).copy(alpha = 0.5f),
                         modifier = Modifier.size(20.dp)
                     )
+                    /*
                     Text(
                         text = label,
                         color = if (selected) themeColor else Color(0xFFE6E1E5).copy(alpha = 0.5f),
@@ -669,6 +674,7 @@ fun ControlTabBar(
                         fontWeight = FontWeight.Bold,
                         maxLines = 1
                     )
+                    */
                 }
             }
         }
