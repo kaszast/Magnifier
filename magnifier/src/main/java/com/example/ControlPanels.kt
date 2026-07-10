@@ -211,7 +211,6 @@ fun ZoomTabContent(
                 )
                 // Text: egyszerű feliratkomponens. Itt a verziószám kis, félkövér.
                 Text(
-                    text = "v$appVersion alfa",
                     color = themeColor,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
