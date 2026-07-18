@@ -228,7 +228,7 @@ fun ZoomTabContent(
                 )
                 // Text: egyszerű feliratkomponens. Itt a verziószám kis, félkövér.
                 Text(
-                    text = "v$appVersion alfa",
+                    text = "v$appVersion",
                     color = themeColor,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
@@ -683,31 +683,20 @@ fun SettingsTabContent(
         // Fejléc beállítások ikonnal
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = stringResource(R.string.tab_settings),
-                    tint = themeColor,
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    text = "v$appVersion",
-                    color = themeColor,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = stringResource(R.string.tab_settings),
+                tint = themeColor,
+                modifier = Modifier.size(16.dp)
+            )
             Text(
-                text = stringResource(R.string.developer_info),
-                color = Color.White.copy(alpha = 0.4f),
+                text = "v$appVersion",
+                color = themeColor,
                 fontSize = 11.sp,
-                fontWeight = FontWeight.Normal
+                fontWeight = FontWeight.Bold
             )
         }
 
@@ -781,7 +770,6 @@ fun SettingsTabContent(
 
             // Nyelvválasztó gomb (a kért zászló ikonnal a rate és help között)
             var isMenuExpanded by remember { mutableStateOf(false) }
-            val flagEmoji = if (currentLanguage == "hu") "🇭🇺" else "🇬🇧"
 
             Box(
                 modifier = Modifier
@@ -792,9 +780,11 @@ fun SettingsTabContent(
                     .clickable { isMenuExpanded = true },
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = flagEmoji,
-                    fontSize = 20.sp
+                Icon(
+                    imageVector = Icons.Default.Flag,
+                    contentDescription = stringResource(R.string.tab_theme),
+                    tint = themeColor,
+                    modifier = Modifier.size(20.dp)
                 )
 
                 DropdownMenu(

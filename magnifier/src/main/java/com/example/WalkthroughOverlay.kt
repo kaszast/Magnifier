@@ -109,7 +109,7 @@ fun WalkthroughOverlay(
                     state = pagerState,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(280.dp)
+                        .height(320.dp)
                 ) { page ->
                     val step = steps[page]
                     Column(
@@ -122,7 +122,7 @@ fun WalkthroughOverlay(
                         // Icon circle
                         Box(
                             modifier = Modifier
-                                .size(88.dp)
+                                .size(72.dp)
                                 .background(step.iconColor.copy(alpha = 0.15f), CircleShape)
                                 .border(2.dp, step.iconColor.copy(alpha = 0.8f), CircleShape),
                             contentAlignment = Alignment.Center
@@ -131,11 +131,11 @@ fun WalkthroughOverlay(
                                 imageVector = step.icon,
                                 contentDescription = null,
                                 tint = step.iconColor,
-                                modifier = Modifier.size(44.dp)
+                                modifier = Modifier.size(36.dp)
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         // Title
                         Text(
@@ -146,7 +146,7 @@ fun WalkthroughOverlay(
                             textAlign = TextAlign.Center
                         )
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         // Body description
                         Text(
