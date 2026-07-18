@@ -541,6 +541,13 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
         }
     }
 
+    // Ha visszatérünk az élő képhez (isFrozen = false), az élesítés erősségét visszaállítjuk 0-ra.
+    LaunchedEffect(isFrozen) {
+        if (!isFrozen) {
+            sharpenStrength = 0.0f
+        }
+    }
+
     // A kimerevített kép aszinkron élesítése. Újrafut, ha a nyers kép VAGY az élesítés-erősség változik.
     // A drága sharpenBitmap Dispatchers.Default-on (háttérszál) fut, majd az eredményt Dispatchers.Main-en
     // (fő szál) írjuk vissza a frozenBitmap állapotba — mert UI-állapotot csak a fő szálról szabad módosítani.
