@@ -62,10 +62,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 //
 //   - ZoomMinimap        -> Picture-in-Picture bélyegkép, amely a digitális zoom
 //                           aktuális kivágását (a látható "viewport"-ot) mutatja.
-//   - TopLeftControls    -> bal-felső lebegő gombok: kezelőszervek elrejtése +
-//                           kamera-indikátor és -váltó.
+//   - TopLeftControls    -> bal-felső lebegő vezérlő: kamera-indikátor és -váltó.
 //   - ActionButtonsRow   -> fő akciógombsor: zseblámpa, mentés, kimerevítés, megosztás.
-//   - ControlTabBar      -> alsó szegmentált navigáció: zoom / szűrők / korrekció / téma.
+//   - ControlTabBar      -> alsó szegmentált navigáció: 2 fül (Zoom/Szűrők és Beállítások).
 //
 // FONTOS ARCHITEKTÚRÁLIS ELV — "state hoisting":
 // Ezek a komponensek NEM tárolnak állapotot (state) és NEM tartalmaznak üzleti
@@ -307,23 +306,17 @@ fun ZoomMinimap(
     }
 }
 
-// Bal-felső lebegő vezérlők: teljes képernyő (kezelőszervek) váltó + kamera-indikátor/váltó
+// Bal-felső lebegő vezérlő: kamera-indikátor és -váltó gomb
 //
-// MIT JELENÍT MEG: két kicsi lebegő gomb egymás mellett — (1) egy "szem" ikon a
-// kezelőszervek elrejtéséhez/megjelenítéséhez (tiszta, teljes képernyős nézethez),
-// és (2) egy kamera-jelző + -váltó, amely mutatja az aktív kamerát és tabbal vált.
+// MIT JELENÍT MEG: kamera-jelző + -váltó gomb, amely mutatja az aktív kamerát és tap-re vált.
+// (A szem ikon és a kezelőszervek gomb eltávolításra került, a teljes képernyős mód koppintással érhető el.)
 //
 // STATE HOISTING: a komponens NEM dönti el, mi történjen a kattintásra — csak
-// paraméterként kapja az AKTUÁLIS állapotot (controlsVisible, isFrozen, a kamerák
-// listája, a kiválasztott index), a kattintást pedig továbbítja a hoistolt
-// lambdáknak. Ezért lambda az onToggleControls és az onSwapCamera: a tényleges
-// állapotváltást a hívó MagnifierMainScreen végzi el, ahol az állapot valóban él.
-// Így ez a komponens tiszta és mellékhatás-mentes marad.
+// paraméterként kapja az AKTUÁLIS állapotot (isFrozen, a kamerák listája, a kiválasztott index),
+// a kattintást pedig továbbítja a hoistolt lambdáknak.
 //
 // PARAMÉTEREK:
 //   themeColor          - akcentszín (ikonok színe, keretek)
-//   controlsVisible     - jelenleg láthatók-e a kezelőszervek (ikonválasztáshoz)
-//   onToggleControls    - kattintás-esemény: kezelőszervek ki/be (hoistolt lambda)
 //   isFrozen            - kimerevített módban a kamera-váltó rejtve marad
 //   availableCameras    - az eszközön elérhető kamerák listája
 //   selectedCameraIndex - az aktív kamera indexe a fenti listában
@@ -562,9 +555,9 @@ fun ActionButtonsRow(
     }
 }
 
-// Alsó szegmentált navigációs tab-sor (nagyítás / szűrők / korrekció / téma)
+// Alsó szegmentált navigációs tab-sor (Zoom & Szűrők / Beállítások)
 //
-// MIT JELENÍT MEG: egy "szegmentált vezérlő" (segmented control) — négy egyenlő
+// MIT JELENÍT MEG: egy "szegmentált vezérlő" (segmented control) — két egyenlő
 // szélességű fül egyetlen keretben, mindegyik ikonnal + felirattal. A kiválasztott
 // fül kiemelt háttérrel és a témaszínnel jelenik meg; a többi halványabb.
 //
@@ -574,7 +567,7 @@ fun ActionButtonsRow(
 // MagnifierMainScreen dönti el.
 //
 // PARAMÉTEREK:
-//   activeTab     - a jelenleg kiválasztott fül indexe (0..3)
+//   activeTab     - a jelenleg kiválasztott fül indexe (0..1)
 //   onTabSelected - fülre kattintás esemény, átadja a kattintott index-et (hoistolt lambda)
 //   themeColor    - akcentszín (a kiválasztott fül ikonja és felirata)
 @Composable
