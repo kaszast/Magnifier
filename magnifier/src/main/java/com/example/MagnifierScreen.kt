@@ -1183,6 +1183,7 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                 }
             }
 
+            val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
             // Sleek, semi-transparent frosted card container at the bottom with animations
             androidx.compose.animation.AnimatedVisibility(
                 visible = controlsVisible,
@@ -1193,6 +1194,7 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(max = screenHeight / 3)
                         .padding(horizontal = 16.dp)
                         .padding(bottom = innerPadding.calculateBottomPadding() + 16.dp)
                         .background(Color(0xE60D0C11), RoundedCornerShape(28.dp))
@@ -1207,6 +1209,7 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .weight(1f, fill = false)
                             .animateContentSize()
                     ) {
                         when (activeTab) {

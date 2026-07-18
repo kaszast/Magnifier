@@ -679,8 +679,11 @@ fun SettingsTabContent(
     currentLanguage: String,
     onChangeLanguage: (String) -> Unit
 ) {
+    val scrollState = rememberScrollState()
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Fejléc beállítások ikonnal
