@@ -931,13 +931,13 @@ fun CombinedZoomFiltersTuneTabContent(
 
         // 2. Fő nagyítás vezérlősor: [-] | csúszka | [+] | érték
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(40.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(40.dp)
                     .background(Color(0xFF1B1A21), CircleShape)
                     .border(1.dp, Color(0xFF2E2C33), CircleShape)
                     .clickable {
@@ -979,7 +979,7 @@ fun CombinedZoomFiltersTuneTabContent(
 
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(40.dp)
                     .background(Color(0xFF1B1A21), CircleShape)
                     .border(1.dp, Color(0xFF2E2C33), CircleShape)
                     .clickable {
@@ -1034,7 +1034,7 @@ fun CombinedZoomFiltersTuneTabContent(
                         Box(
                             modifier = Modifier
                                 .width(itemWidth)
-                                .heightIn(min = 40.dp)
+                                .height(40.dp)
                                 .background(
                                     if (isSelected) themeColor else Color(0xFF1B1A21),
                                     RoundedCornerShape(12.dp)
@@ -1047,7 +1047,7 @@ fun CombinedZoomFiltersTuneTabContent(
                                         onApplyTotalZoom(preset, true)
                                     }
                                 }
-                                .padding(vertical = 8.dp),
+                                .padding(vertical = 6.dp),
                             contentAlignment = Alignment.Center
                          ) {
                             Text(
@@ -1153,7 +1153,7 @@ fun CombinedZoomFiltersTuneTabContent(
 
         // 5. Csúszkasorok (expozíció/kontraszt, fényerő, élesítés)
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(40.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -1185,7 +1185,7 @@ fun CombinedZoomFiltersTuneTabContent(
 
         if (isFrozen) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().height(40.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -1212,7 +1212,7 @@ fun CombinedZoomFiltersTuneTabContent(
         if (isFrozen) {
             Spacer(modifier = Modifier.height(2.dp))
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().height(40.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
