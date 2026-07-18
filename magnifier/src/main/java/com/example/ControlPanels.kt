@@ -18,6 +18,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
@@ -742,40 +747,54 @@ fun TuneTabContent(
             }
         }
 
-        // ÉLESÍTÉS (sharpen) csúszka — mindkét módban elérhető (élő digitális zoom és
-        // fagyasztott kép esetén is). A Spacer egy üres, 2dp magas térkitöltő elem,
-        // ami egy kis extra függőleges hézagot ad a fölötte lévő tartalomtól.
-        Spacer(modifier = Modifier.height(2.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.AutoAwesome,
-                contentDescription = stringResource(R.string.label_sharpen),
-                tint = themeColor,
-                modifier = Modifier.size(18.dp)
-            )
-            // Élesítés csúszka: folyamatosan frissítjük a kijelzett értéket (onValueChange),
-            // de a drága képfeldolgozást csak az elengedéskor (onValueChangeFinished)
-            // indítjuk el, hogy ne fagyjon be a UI húzás közben.
-            var draggingValue by remember(sharpenStrength) { mutableFloatStateOf(sharpenStrength) }
+        // ÉLESÍTÉS (sharpen) csúszka — csak megállított kép (isFrozen = true) esetén érhető el.
+        // A háromszög ikon belső része átlátszó (csak a körvonala témaszínű), amit egyedi Canvas-szel rajzolunk meg.
+        if (isFrozen) {
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Canvas(
+                    modifier = Modifier.size(18.dp)
+                ) {
+                    val path = Path().apply {
+                        moveTo(size.width / 2f, 0f)
+                        lineTo(size.width, size.height)
+                        lineTo(0f, size.height)
+                        close()
+                    }
+                    drawPath(
+                        path = path,
+                        color = themeColor,
+                        style = Stroke(
+                            width = 2.dp.toPx(),
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
+                }
+                // Élesítés csúszka: folyamatosan frissítjük a kijelzett értéket (onValueChange),
+                // de a drága képfeldolgozást csak az elengedéskor (onValueChangeFinished)
+                // indítjuk el, hogy ne fagyjon be a UI húzás közben.
+                var draggingValue by remember(sharpenStrength) { mutableFloatStateOf(sharpenStrength) }
 
-            Slider(
-                value = draggingValue,
-                onValueChange = { draggingValue = it },
-                onValueChangeFinished = { onSharpenStrengthChange(draggingValue) },
-                valueRange = 0.0f..10.0f,
-                colors = SliderDefaults.colors(
-                    activeTrackColor = themeColor,
-                    thumbColor = themeColor,
-                    inactiveTrackColor = Color(0xFF1B1A21)
-                ),
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("sharpen_strength_slider")
-            )
+                Slider(
+                    value = draggingValue,
+                    onValueChange = { draggingValue = it },
+                    onValueChangeFinished = { onSharpenStrengthChange(draggingValue) },
+                    valueRange = 0.0f..10.0f,
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = themeColor,
+                        thumbColor = themeColor,
+                        inactiveTrackColor = Color(0xFF1B1A21)
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("sharpen_strength_slider")
+                )
+            }
         }
     }
 }
