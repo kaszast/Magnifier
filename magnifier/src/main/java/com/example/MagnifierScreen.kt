@@ -1207,10 +1207,11 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // 1. Controls content depending on Active Tab
+                    // 1. Controls content depending on Active Tab (Fixed 120.dp height for identical layout sizes)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .height(120.dp)
                             .animateContentSize()
                     ) {
                         when (activeTab) {
