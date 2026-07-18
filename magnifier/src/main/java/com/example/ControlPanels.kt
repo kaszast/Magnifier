@@ -1056,12 +1056,12 @@ fun CombinedZoomFiltersTuneTabContent(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Jobb oldal: 4 gyors-zoom preset (1x, 4x, 16x, 64x) (méret: 26x40.dp)
+            // Jobb oldal: 4 gyors-zoom preset (1x, 2x, 4x, 8x) (méret: 26x40.dp)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val compactPresets = listOf(1.0f, 4.0f, 16.0f, 64.0f)
+                val compactPresets = listOf(1.0f, 2.0f, 4.0f, 8.0f)
                 compactPresets.forEach { preset ->
                     val isSelected = if (isFrozen) {
                         abs(frozenScale - preset) < 0.15f
@@ -1099,95 +1099,101 @@ fun CombinedZoomFiltersTuneTabContent(
             }
         }
 
-        // 3. Csúszkasor 2: Fényerő (Balra) és Élesítés (Jobbra) side-by-side (csak kimerevített képen) (magasság: 40.dp)
-        if (isFrozen) {
+        // 3. Csúszkasor 2: Fényerő (Balra) és Élesítés (Jobbra) side-by-side (állandóan látható, de élő kép esetén letiltva) (magasság: 40.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth().height(40.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Bal oldal: Fényerő
             Row(
-                modifier = Modifier.fillMaxWidth().height(40.dp),
+                modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Bal oldal: Fényerő
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.LightMode,
-                        contentDescription = null,
-                        tint = themeColor,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Slider(
-                        value = brightness,
-                        onValueChange = { onBrightnessChange(it) },
-                        valueRange = -80f..80f,
-                        colors = SliderDefaults.colors(
-                            activeTrackColor = themeColor,
-                            thumbColor = themeColor,
-                            inactiveTrackColor = Color(0xFF1B1A21)
-                        ),
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        text = String.format("%.0f", brightness),
-                        color = Color.White,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.widthIn(min = 32.dp),
-                        textAlign = TextAlign.End
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.LightMode,
+                    contentDescription = null,
+                    tint = if (isFrozen) themeColor else Color(0xFF5E5C64),
+                    modifier = Modifier.size(20.dp)
+                )
+                Slider(
+                    value = brightness,
+                    onValueChange = { onBrightnessChange(it) },
+                    valueRange = -80f..80f,
+                    enabled = isFrozen,
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = themeColor,
+                        thumbColor = themeColor,
+                        inactiveTrackColor = Color(0xFF1B1A21),
+                        disabledActiveTrackColor = Color(0xFF3E3D45),
+                        disabledThumbColor = Color(0xFF3E3D45),
+                        disabledInactiveTrackColor = Color(0xFF1B1A21)
+                    ),
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = String.format("%.0f", brightness),
+                    color = if (isFrozen) Color.White else Color(0xFF5E5C64),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.widthIn(min = 32.dp),
+                    textAlign = TextAlign.End
+                )
+            }
 
-                // Jobb oldal: Élesítés
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+            // Jobb oldal: Élesítés
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Canvas(
+                    modifier = Modifier.size(20.dp)
                 ) {
-                    Canvas(
-                        modifier = Modifier.size(20.dp)
-                    ) {
-                        val path = Path().apply {
-                            moveTo(size.width / 2f, 0f)
-                            lineTo(size.width, size.height)
-                            lineTo(0f, size.height)
-                            close()
-                        }
-                        drawPath(
-                            path = path,
-                            color = themeColor,
-                            style = Stroke(
-                                width = 2.dp.toPx(),
-                                cap = StrokeCap.Round,
-                                join = StrokeJoin.Round
-                            )
-                        )
+                    val path = Path().apply {
+                        moveTo(size.width / 2f, 0f)
+                        lineTo(size.width, size.height)
+                        lineTo(0f, size.height)
+                        close()
                     }
-                    var draggingValue by remember(sharpenStrength) { mutableFloatStateOf(sharpenStrength) }
-                    Slider(
-                        value = draggingValue,
-                        onValueChange = { draggingValue = it },
-                        onValueChangeFinished = { onSharpenStrengthChange(draggingValue) },
-                        valueRange = 0.0f..10.0f,
-                        colors = SliderDefaults.colors(
-                            activeTrackColor = themeColor,
-                            thumbColor = themeColor,
-                            inactiveTrackColor = Color(0xFF1B1A21)
-                        ),
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("sharpen_strength_slider")
-                    )
-                    Text(
-                        text = String.format("%.1f", sharpenStrength),
-                        color = Color.White,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.widthIn(min = 28.dp),
-                        textAlign = TextAlign.End
+                    drawPath(
+                        path = path,
+                        color = if (isFrozen) themeColor else Color(0xFF5E5C64),
+                        style = Stroke(
+                            width = 2.dp.toPx(),
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
                     )
                 }
+                var draggingValue by remember(sharpenStrength) { mutableFloatStateOf(sharpenStrength) }
+                Slider(
+                    value = draggingValue,
+                    onValueChange = { draggingValue = it },
+                    onValueChangeFinished = { onSharpenStrengthChange(draggingValue) },
+                    valueRange = 0.0f..10.0f,
+                    enabled = isFrozen,
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = themeColor,
+                        thumbColor = themeColor,
+                        inactiveTrackColor = Color(0xFF1B1A21),
+                        disabledActiveTrackColor = Color(0xFF3E3D45),
+                        disabledThumbColor = Color(0xFF3E3D45),
+                        disabledInactiveTrackColor = Color(0xFF1B1A21)
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("sharpen_strength_slider")
+                )
+                Text(
+                    text = String.format("%.1f", sharpenStrength),
+                    color = if (isFrozen) Color.White else Color(0xFF5E5C64),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.widthIn(min = 28.dp),
+                    textAlign = TextAlign.End
+                )
             }
         }
     }
