@@ -51,6 +51,6 @@ class ExampleRobolectricTest {
     // helyesen oldja fel az R.string.* erőforrásokat a JVM-en.
     val context = ApplicationProvider.getApplicationContext<Context>()
     val appName = context.getString(R.string.app_name)
-    assertEquals("Nagyító", appName)
+    assertEquals("Magnifier", appName)
   }
 }
