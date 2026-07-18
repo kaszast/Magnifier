@@ -474,7 +474,7 @@ fun ActionButtonsRow(
         // Torch Button (compact circular glass button)
         Box(
             modifier = Modifier
-                .size(48.dp)
+                .size(40.dp)
                 .background(
                     if (torchEnabled) themeColor else Color(0xFF1F1E26),
                     CircleShape
@@ -492,14 +492,14 @@ fun ActionButtonsRow(
                 imageVector = if (torchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
                 contentDescription = stringResource(R.string.cd_torch),
                 tint = if (torchEnabled) Color.Black else Color.White,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(18.dp)
             )
         }
 
         // Save Button (compact circular glass button)
         Box(
             modifier = Modifier
-                .size(48.dp)
+                .size(40.dp)
                 .background(Color(0xFF1F1E26), CircleShape)
                 .border(1.dp, Color(0xFF2E2C33), CircleShape)
                 .clickable { onSave() }
@@ -510,24 +510,16 @@ fun ActionButtonsRow(
                 imageVector = Icons.Default.Save,
                 contentDescription = stringResource(R.string.cd_save),
                 tint = Color.White,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(18.dp)
             )
         }
 
-        // A kiemelt (hero) kimerevítés/folytatás gomb — a fényképezőgépek zár-gombjának
-        // (shutter) klasszikus DUPLA GYŰRŰS kialakítása. Két egymásba ágyazott Box adja ki:
-        //   - KÜLSŐ Box (72 dp): csak a vékony gyűrűt rajzolja a .border-rel, majd egy
-        //     4 dp .padding-gal "hézagot" hagy befelé — ez a két gyűrű közti rés.
-        //   - BELSŐ Box (fillMaxSize): a tömör, kitöltött korong; EZ a kattintható felület
-        //     (.clickable { onToggleFreeze() }).
-        // A szín állapotfüggő: élő módban a témaszín, kimerevítve piros (0xFFEF4444),
-        // az ikon pedig Pause <-> PlayArrow között vált (kimerevítés vs. folytatás).
         // Hero Freeze/Resume Shutter Button (Dual-ring camera shutter style)
         Box(
             modifier = Modifier
-                .size(72.dp)
+                .size(56.dp)
                 .border(3.dp, if (isFrozen) Color(0xFFEF4444) else themeColor, CircleShape)
-                .padding(4.dp),
+                .padding(3.dp),
             contentAlignment = Alignment.Center
         ) {
             Box(
@@ -545,7 +537,7 @@ fun ActionButtonsRow(
                     imageVector = if (isFrozen) Icons.Default.PlayArrow else Icons.Default.Pause,
                     contentDescription = stringResource(if (isFrozen) R.string.cd_resume else R.string.cd_freeze),
                     tint = Color.Black,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
@@ -553,7 +545,7 @@ fun ActionButtonsRow(
         // Share Button (compact circular glass button)
         Box(
             modifier = Modifier
-                .size(48.dp)
+                .size(40.dp)
                 .background(Color(0xFF1F1E26), CircleShape)
                 .border(1.dp, Color(0xFF2E2C33), CircleShape)
                 .clickable { onShare() }
@@ -564,7 +556,7 @@ fun ActionButtonsRow(
                 imageVector = Icons.Default.Share,
                 contentDescription = stringResource(R.string.cd_share),
                 tint = Color.White,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(18.dp)
             )
         }
     }
