@@ -39,6 +39,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import com.google.android.gms.ads.AdLoader
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.nativead.NativeAd
+import com.google.android.gms.ads.nativead.NativeAdView
+import android.view.LayoutInflater
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -126,6 +137,111 @@ import kotlin.math.roundToInt
 // sötét háttér), a `themeColor` pedig a felhasználó által választott
 // akcentusszín, amit a szülő ad át minden fülnek.
 // =============================================================================
+
+/**
+ * Valódi AdMob Natív hirdetés komponens.
+ * @param adUnitId Az AdMob hirdetési egység azonosítója.
+ */
+/**
+ * Valódi AdMob Natív hirdetés komponens.
+ * @param adUnitId Az AdMob hirdetési egység azonosítója.
+ * @param themeColor Az aktuális témaszín a gomb színezéséhez.
+ */
+@Composable
+fun AdmobNativeAd(adUnitId: String, themeColor: Color) {
+    val context = LocalContext.current
+    var nativeAd by remember { mutableStateOf<com.google.android.gms.ads.nativead.NativeAd?>(null) }
+
+    // Hirdetés betöltése az első megjelenéskor
+    LaunchedEffect(Unit) {
+        val adLoader = AdLoader.Builder(context, adUnitId)
+            .forNativeAd { ad ->
+                nativeAd = ad
+            }
+            .build()
+        adLoader.loadAd(AdRequest.Builder().build())
+    }
+
+    val currentAd = nativeAd
+    if (currentAd != null) {
+        AndroidView(
+            factory = { ctx ->
+                val adView = LayoutInflater.from(ctx).inflate(R.layout.native_ad_layout, null) as NativeAdView
+                
+                // Cím beállítása
+                val headlineView = adView.findViewById<TextView>(R.id.ad_headline)
+                headlineView.text = currentAd.headline
+                adView.headlineView = headlineView
+
+                // Szövegtörzs beállítása
+                val bodyView = adView.findViewById<TextView>(R.id.ad_body)
+                bodyView.text = currentAd.body
+                adView.bodyView = bodyView
+
+                // Akció gomb (CTA) beállítása
+                val ctaView = adView.findViewById<android.widget.Button>(R.id.ad_call_to_action)
+                ctaView.text = currentAd.callToAction
+                // Dinamikus témaszín alkalmazása a gombra
+                ctaView.backgroundTintList = android.content.res.ColorStateList.valueOf(
+                    android.graphics.Color.argb(
+                        (themeColor.alpha * 255).toInt(),
+                        (themeColor.red * 255).toInt(),
+                        (themeColor.green * 255).toInt(),
+                        (themeColor.blue * 255).toInt()
+                    )
+                )
+                adView.callToActionView = ctaView
+
+                // Ikon beállítása
+                val iconView = adView.findViewById<ImageView>(R.id.ad_app_icon)
+                if (currentAd.icon != null) {
+                    iconView.setImageDrawable(currentAd.icon?.drawable)
+                    // Lekerekített sarok az ikonnak, hogy illeszkedjen az apphoz
+                    iconView.clipToOutline = true
+                    iconView.background = null 
+                    adView.iconView = iconView
+                } else {
+                    iconView.visibility = android.view.View.GONE
+                }
+
+                // A hirdetés objektum hozzárendelése a nézethez (kritikus a kattintásméréshez)
+                adView.setNativeAd(currentAd)
+                adView
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+                .padding(top = 8.dp)
+                // Ugyanolyan stílus, mint a többi panel-elem (pl. szűrők/témák)
+                .background(Color(0xFF111115), RoundedCornerShape(16.dp))
+                .border(1.dp, Color(0xFF2E2C33).copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                .padding(horizontal = 4.dp)
+        )
+    } else {
+        // Amíg tölt a hirdetés, egy sötét helyfoglalót mutatunk, ami illeszkedik a designba
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+                .padding(top = 8.dp)
+                .background(Color(0xFF111115), RoundedCornerShape(16.dp))
+                .border(1.dp, Color(0xFF2E2C33).copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+        )
+    }
+}
+
+/**
+ * Helykitöltő komponens egy natív hirdetés számára.
+ * Mostantól a valódi AdmobNativeAd-et hívja meg a Google teszt azonosítójával.
+ */
+@Composable
+fun NativeAdPlaceholder(themeColor: Color) {
+    // Google Teszt Natív Hirdetési Egység ID: ca-app-pub-3940256099942544/2247696110
+    // Saját hirdetéshez ezt írd át a Play Console-ból kapott egység azonosítóra!
+    val testAdUnitId = "ca-app-pub-3940256099942544/2247696110"
+    
+    AdmobNativeAd(adUnitId = testAdUnitId, themeColor = themeColor)
+}
 
 /**
  * NAGYÍTÁS FÜL tartalma. Megjeleníti (fentről lefelé):

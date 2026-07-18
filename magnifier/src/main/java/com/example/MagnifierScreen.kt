@@ -1373,6 +1373,9 @@ fun MagnifierMainScreen() {
                         onTabSelected = { activeTab = it },
                         themeColor = themeColor
                     )
+
+                    // 5. Native Ad Slot - Fixed at the very bottom of the floating card
+                    NativeAdPlaceholder(themeColor)
                 }
             }
             }

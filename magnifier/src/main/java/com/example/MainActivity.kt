@@ -101,6 +101,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.theme.MyApplicationTheme
+import com.google.android.gms.ads.MobileAds
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -146,6 +147,7 @@ class MainActivity : ComponentActivity() {
         // Az ős onCreate-jét KÖTELEZŐ először meghívni: az végzi el az Activity
         // alap-inicializálását. Enélkül futásidejű hibát (exception) kapnánk.
         super.onCreate(savedInstanceState)
+        MobileAds.initialize(this) {}
         // enableEdgeToEdge(): az app a teljes kijelzőt használhatja, a rendszer-
         // sávok (status bar fent, navigation bar lent) mögé is kirajzolódik a
         // tartalom — modern, "kerettelen" megjelenés.

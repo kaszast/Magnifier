@@ -12,8 +12,8 @@ android {
     applicationId = "com.aistudio.magnifier.nwzkpq"
     minSdk = 24
     targetSdk = 35
-    versionCode = 31
-    versionName = "0.32 Board"
+    versionCode = 35
+    versionName = "0.35 DunkinAD"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -72,6 +72,7 @@ dependencies {
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
+  implementation(libs.play.services.ads)
   // implementation(libs.androidx.navigation.compose)
   // implementation(libs.androidx.room.ktx)
   // implementation(libs.androidx.room.runtime)
