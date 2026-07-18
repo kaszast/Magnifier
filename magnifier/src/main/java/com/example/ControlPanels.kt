@@ -880,131 +880,160 @@ fun TuneTabContent(
                     .weight(1f)
                     .testTag("sharpen_strength_slider")
             )
-            // Érték-felirat: a csúszka aktuális állását mutatja húzás közben is.
-            /*
-            Text(
-                text = if (draggingValue == 0.0f) "0.0" else String.format("%.1fx", draggingValue),
-                color = Color.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.widthIn(min = 55.dp),
-                textAlign = TextAlign.End
-            )
-            */
         }
     }
 }
 
-/**
- * TÉMA FÜL tartalma. Fejlécsor (paletta-ikon + verzió) alatt egymás mellett
- * megjeleníti a választható akcentusszíneket (themeOptions), mindegyiket egy
- * színes körrel és névvel. A jelenleg aktív téma kártyáján pipa látszik, és a
- * kerete/felirata a téma saját színét kapja.
- *
- * Szerkezetileg szinte azonos a FiltersTabContent-tel; a fő különbség, hogy itt
- * INDEX alapján azonosítjuk a kiválasztást (a téma egy listaelem), nem enum-mal.
- *
- * Paraméterek (hoistolt):
- *  @param appVersion         kiírt verziószám
- *  @param themeColor         az aktuális akcentusszín (a fejléc ikonjához/verzióhoz)
- *  @param themeOptions       a választható témák listája (szín + név-erőforrás)
- *  @param currentThemeIndex  a jelenleg kiválasztott téma indexe a listában
- *  @param onThemeIndexChange visszahívás: a felhasználó másik témát választott (index)
- */
 @Composable
-fun ThemeTabContent(
+fun SettingsTabContent(
     appVersion: String,
     themeColor: Color,
     themeOptions: List<AppThemeColor>,
     currentThemeIndex: Int,
     onThemeIndexChange: (Int) -> Unit,
+    onRateApp: () -> Unit,
+    onShowTutorial: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        // Fejléc beállítások ikonnal
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Default.Palette,
-                contentDescription = stringResource(R.string.tab_theme),
-                tint = themeColor,
-                modifier = Modifier.size(16.dp)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = stringResource(R.string.tab_settings),
+                    tint = themeColor,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = "v$appVersion",
+                    color = themeColor,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             Text(
-                text = "v$appVersion alfa",
-                color = themeColor,
+                text = stringResource(R.string.developer_info),
+                color = Color.White.copy(alpha = 0.4f),
                 fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Normal
             )
         }
-        // A téma-kártyák sora. forEachIndexed-del megyünk végig, mert a
-        // kiválasztást INDEX szerint azonosítjuk (currentThemeIndex).
+
+        // Téma színek rácsa
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             themeOptions.forEachIndexed { index, option ->
-                // Ez az index-e a kiválasztott téma?
                 val selected = currentThemeIndex == index
-                // Egy téma-kártya. weight(1f) -> egyenlő szélesség. Kiválasztva a
-                // háttér a téma színének halvány (15% átlátszó) változata, a keret
-                // pedig a teli színe; egyébként sötét háttér + semleges keret.
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .heightIn(min = 52.dp)
+                        .heightIn(min = 40.dp)
                         .background(
                             if (selected) option.color.copy(alpha = 0.15f) else Color(0xFF111115),
-                            RoundedCornerShape(14.dp)
+                            RoundedCornerShape(12.dp)
                         )
                         .border(
                             1.dp,
                             if (selected) option.color else Color(0xFF2E2C33),
-                            RoundedCornerShape(14.dp)
+                            RoundedCornerShape(12.dp)
                         )
                         .clickable { onThemeIndexChange(index) }
-                        .padding(vertical = 6.dp),
+                        .padding(vertical = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Kártya tartalma: felül a szín-kör, alatta a téma neve.
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .background(option.color, CircleShape),
+                        contentAlignment = Alignment.Center
                     ) {
-                        // Egyszínű kör az adott téma színével (itt nincs gradiens,
-                        // csak sima háttérszín + CircleShape).
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .background(option.color, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            // A kiválasztott témán fekete pipa jelenik meg a körben.
-                            if (selected) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = stringResource(R.string.cd_selected),
-                                    tint = Color.Black,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
+                        if (selected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = stringResource(R.string.cd_selected),
+                                tint = Color.Black,
+                                modifier = Modifier.size(12.dp)
+                            )
                         }
-                        // A téma neve az option.nameRes erőforrásból (lokalizált).
-                        // Kiválasztva a téma színét kapja, egyébként halvány szürkét.
-                        /*
-                        Text(
-                            text = stringResource(option.nameRes),
-                            color = if (selected) option.color else Color(0xFFA1A1AA),
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            textAlign = TextAlign.Center
-                        )
-                        */
                     }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        // Értékelés és Súgó gombok
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Értékelés gomb
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp)
+                    .background(Color(0xFF1F1E26), RoundedCornerShape(12.dp))
+                    .border(1.dp, Color(0xFF2E2C33), RoundedCornerShape(12.dp))
+                    .clickable { onRateApp() },
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        tint = themeColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.action_rate_app),
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            // Súgó gomb
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp)
+                    .background(Color(0xFF1F1E26), RoundedCornerShape(12.dp))
+                    .border(1.dp, Color(0xFF2E2C33), RoundedCornerShape(12.dp))
+                    .clickable { onShowTutorial() },
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Help,
+                        contentDescription = null,
+                        tint = themeColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.action_show_tutorial),
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }

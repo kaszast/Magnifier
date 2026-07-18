@@ -633,7 +633,7 @@ fun ControlTabBar(
             Pair(Icons.Default.ZoomIn, stringResource(R.string.tab_zoom)),
             Pair(Icons.Default.ColorLens, stringResource(R.string.tab_filters)),
             Pair(Icons.Default.Tune, stringResource(R.string.tab_tune)),
-            Pair(Icons.Default.Palette, stringResource(R.string.tab_theme))
+            Pair(Icons.Default.Settings, stringResource(R.string.tab_settings))
         )
 
         // forEachIndexed: végigmegy a listán, és a lambdának ODAADJA az elem INDEXÉT is

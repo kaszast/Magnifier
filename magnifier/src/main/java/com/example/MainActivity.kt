@@ -144,32 +144,22 @@ class MainActivity : ComponentActivity() {
      * — az app első indításakor nincs mit visszatölteni, ezért null.
      */
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Az ős onCreate-jét KÖTELEZŐ először meghívni: az végzi el az Activity
-        // alap-inicializálását. Enélkül futásidejű hibát (exception) kapnánk.
         super.onCreate(savedInstanceState)
         MobileAds.initialize(this) {}
-        // enableEdgeToEdge(): az app a teljes kijelzőt használhatja, a rendszer-
-        // sávok (status bar fent, navigation bar lent) mögé is kirajzolódik a
-        // tartalom — modern, "kerettelen" megjelenés.
+        
+        // Alkalmazásindítások számolása SharedPreferences használatával
+        val prefs = getSharedPreferences("magnifier_prefs", Context.MODE_PRIVATE)
+        val launchCount = prefs.getInt("launch_count", 0) + 1
+        prefs.edit().putInt("launch_count", launchCount).apply()
+
         enableEdgeToEdge()
-        // setContent { ... }: INNENTŐL Compose. A blokkban lévő composable
-        // függvényhívások írják le a képernyő tartalmát. Ez váltja ki a régi
-        // setContentView(R.layout.xxx) hívást, ami XML-layoutot töltött be.
         setContent {
-            // MyApplicationTheme: a projekt Compose-témája (színek, tipográfia,
-            // formák egységes csomagja) — a ui/theme csomagban definiálva.
-            // darkTheme = true: erőltetett sötét mód, hogy a nagyító kevésbé
-            // vakítson gyenge fényviszonyok között.
             MyApplicationTheme(darkTheme = true) { // Force Dark Mode for superior low-glare magnifier experience
-                // Surface: alap-felület/háttér-réteg a Material Designból. Itt a
-                // teljes képernyőt kitölti (fillMaxSize) és feketére színezi —
-                // ez a kamera-előnézet alatti "vászon".
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = Color.Black
                 ) {
-                    // A tényleges app-tartalom belépő composable-je.
-                    MagnifierApp()
+                    MagnifierApp(launchCount = launchCount)
                 }
             }
         }
@@ -182,18 +172,12 @@ class MainActivity : ComponentActivity() {
  *
  * Mi az a @Composable függvény? Egy UI-t LEÍRÓ függvény. Nem "rajzol"
  * imperatívan (nincs benne "húzz ide egy vonalat"), hanem deklarálja, milyen
- * legyen a felület az adott állapot (state) mellett. A Compose futtatókörnyezete
- * ezt a leírást fordítja képpé. Ezért is NAGYBETŰVEL kezdődik a neve
- * (PascalCase) — konvenció, ami vizuálisan elkülöníti a "UI-elem" függvényeket a
+ * vizuálisan elkülöníti a "UI-elem" függvényeket a
  * hétköznapi (camelCase) függvényektől.
- *
- * @OptIn(ExperimentalPermissionsApi::class): kifejezetten "vállaljuk", hogy egy
- * még kísérleti (experimental) API-t használunk — az Accompanist permission
- * könyvtárét. Enélkül a fordító figyelmeztetne.
  */
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun MagnifierApp() {
+fun MagnifierApp(launchCount: Int) {
     // LocalContext.current: a Context egy "kulcs" az Android-rendszerhez
     // (erőforrások, rendszer-szolgáltatások eléréséhez). A LocalContext egy
     // CompositionLocal: olyan érték, amit nem paraméterként adunk át, hanem a
@@ -244,7 +228,7 @@ fun MagnifierApp() {
     DisposableEffect(lifecycleOwner) {
         // Figyelő (observer), ami minden életciklus-eseményt megkap. Minket az
         // ON_RESUME érdekel: az akkor tüzel, amikor a képernyő ismét előtérbe
-        // kerül. Ez azért fontos, mert a felhasználó elhagyhatja az appot a
+        // kerül. Ezért fontos, mert a felhasználó elhagyhatja az appot a
         // rendszer Beállítások (Settings) képernyőjére, ott KÉZZEL is megadhatja
         // (vagy visszavonhatja) a kamera-engedélyt, majd visszatérhet. Ilyenkor a
         // rendszer engedélykérő dialógusa nem fut újra, ezért visszatéréskor mi
@@ -264,11 +248,8 @@ fun MagnifierApp() {
         }
     }
 
-    // A tényleges elágazás: az állapot alapján vagy a nagyítót, vagy az
-    // engedélykérő képernyőt mutatjuk. Mivel isPermissionGranted egy Compose
-    // state, ennek változásakor a Compose automatikusan a másik ágra vált.
     if (isPermissionGranted) {
-        MagnifierMainScreen()
+        MagnifierMainScreen(launchCount = launchCount)
     } else {
         // Az engedélykérő képernyő gombja ugyanazt a rendszer-dialógust indítja.
         // A gomb-eseményt lambda-ként (callback) adjuk át lefelé.

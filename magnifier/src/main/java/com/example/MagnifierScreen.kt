@@ -279,11 +279,29 @@ fun NoCameraScreen() {
 // olyan értéket, aminek túl kell élnie egy recompositiont — arra való a remember { } és
 // a rememberSaveable { } (lásd az ÁLLAPOTOK szekció részletes magyarázatát).
 @Composable
-fun MagnifierMainScreen() {
+fun MagnifierMainScreen(launchCount: Int = 0) {
     // --- Alap-függőségek (dependencies), amiket a Compose-fából "szedünk le" ---
 
     // A Context sok Android API-hoz kell (csomaginfó, kamera, fájlmentés...).
     val context = LocalContext.current
+
+    // SharedPreferences és állapotok a bemutatóhoz és az értékeléshez
+    val prefs = remember { context.getSharedPreferences("magnifier_prefs", Context.MODE_PRIVATE) }
+    var showWalkthrough by remember {
+        mutableStateOf(!prefs.getBoolean("walkthrough_shown", false))
+    }
+    var showRateDialog by remember {
+        mutableStateOf(false)
+    }
+
+    // Automatikus értékelés kérése bizonyos számú indítás után
+    LaunchedEffect(Unit) {
+        val rateNever = prefs.getBoolean("rate_never", false)
+        val rateDone = prefs.getBoolean("rate_done", false)
+        if (launchCount >= 5 && !rateNever && !rateDone) {
+            showRateDialog = true
+        }
+    }
 
     // Az app verziónevének kiolvasása a package-infóból, egyszeri számítással.
     // A remember { } gondoskodik róla, hogy ez a (viszonylag drága) lekérdezés NE fusson
@@ -1217,12 +1235,30 @@ fun MagnifierMainScreen() {
                                 sharpenStrength = sharpenStrength,
                                 onSharpenStrengthChange = { sharpenStrength = it }
                             )
-                            3 -> ThemeTabContent(
+                            3 -> SettingsTabContent(
                                 appVersion = appVersion,
                                 themeColor = themeColor,
                                 themeOptions = themeOptions,
                                 currentThemeIndex = currentThemeIndex,
-                                onThemeIndexChange = { currentThemeIndex = it }
+                                onThemeIndexChange = { index -> currentThemeIndex = index },
+                                onRateApp = {
+                                    val packageName = context.packageName
+                                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                                        data = Uri.parse("market://details?id=$packageName")
+                                    }
+                                    try {
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        val webIntent = Intent(Intent.ACTION_VIEW).apply {
+                                            data = Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
+                                        }
+                                        context.startActivity(webIntent)
+                                    }
+                                    prefs.edit().putBoolean("rate_done", true).apply()
+                                },
+                                onShowTutorial = {
+                                    showWalkthrough = true
+                                }
                             )
                         }
                     }
@@ -1277,6 +1313,16 @@ fun MagnifierMainScreen() {
                                             toastSubIcon = Icons.Default.CheckCircle
                                             toastColor = Color(0xFF10B981) // emerald green
                                             showSavedToast = true
+
+                                            // Növeljük a mentések számát és ellenőrizzük az értékelést
+                                            val saveCount = prefs.getInt("save_count", 0) + 1
+                                            prefs.edit().putInt("save_count", saveCount).apply()
+
+                                            val rateNever = prefs.getBoolean("rate_never", false)
+                                            val rateDone = prefs.getBoolean("rate_done", false)
+                                            if (saveCount >= 3 && !rateNever && !rateDone) {
+                                                showRateDialog = true
+                                            }
                                         } else {
                                             toastIcon = Icons.Default.Save
                                             toastSubIcon = Icons.Default.Error
@@ -1465,6 +1511,48 @@ fun MagnifierMainScreen() {
                 ) {
                     CircularProgressIndicator(color = Color(0xFFD0BCFF))
                 }
+            }
+
+            // Útmutató overlay
+            if (showWalkthrough) {
+                WalkthroughOverlay(
+                    themeColor = themeColor,
+                    onDismiss = {
+                        showWalkthrough = false
+                        prefs.edit().putBoolean("walkthrough_shown", true).apply()
+                    }
+                )
+            }
+
+            // Értékelési párbeszédpanel
+            if (showRateDialog) {
+                RatePromptDialog(
+                    themeColor = themeColor,
+                    onRateNow = {
+                        showRateDialog = false
+                        prefs.edit().putBoolean("rate_done", true).apply()
+
+                        val packageName = context.packageName
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            data = Uri.parse("market://details?id=$packageName")
+                        }
+                        try {
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            val webIntent = Intent(Intent.ACTION_VIEW).apply {
+                                data = Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
+                            }
+                            context.startActivity(webIntent)
+                        }
+                    },
+                    onRateLater = {
+                        showRateDialog = false
+                    },
+                    onRateNever = {
+                        showRateDialog = false
+                        prefs.edit().putBoolean("rate_never", true).apply()
+                    }
+                )
             }
         }
     }
