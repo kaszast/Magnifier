@@ -1190,9 +1190,11 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                 exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { it }) + androidx.compose.animation.fadeOut(),
                 modifier = Modifier.align(Alignment.BottomCenter)
             ) {
+                val screenHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(screenHeight * 0.40f)
                         .padding(horizontal = 16.dp)
                         .padding(bottom = innerPadding.calculateBottomPadding() + 16.dp)
                         .background(Color(0xE60D0C11), RoundedCornerShape(28.dp))
@@ -1204,14 +1206,14 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                         .padding(horizontal = 18.dp, vertical = 14.dp)
                 ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().fillMaxHeight(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // 1. Controls content depending on Active Tab (Fixed 120.dp height for identical layout sizes)
+                    // 1. Controls content depending on Active Tab (Fills remaining space in the 40% height UI)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(120.dp)
+                            .weight(1f)
                             .animateContentSize()
                     ) {
                         when (activeTab) {
