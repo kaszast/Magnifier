@@ -886,9 +886,9 @@ fun CombinedZoomFiltersTuneTabContent(
     ) {
         val currentTotalZoom = if (isFrozen) frozenScale else (liveZoomRatio * extraDigitalZoom)
 
-        // 1. Csúszkasor 1: Zoom (Balra) és Expozíció/Kontraszt (Jobbra) side-by-side
+        // 1. Csúszkasor 1: Zoom (Balra) és Expozíció/Kontraszt (Jobbra) side-by-side (magasság: 45.dp)
         Row(
-            modifier = Modifier.fillMaxWidth().height(36.dp),
+            modifier = Modifier.fillMaxWidth().height(45.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -902,7 +902,7 @@ fun CombinedZoomFiltersTuneTabContent(
                     imageVector = Icons.Default.ZoomIn,
                     contentDescription = null,
                     tint = themeColor,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(20.dp)
                 )
                 Slider(
                     value = currentTotalZoom.coerceIn(sliderMin, sliderMax),
@@ -926,9 +926,9 @@ fun CombinedZoomFiltersTuneTabContent(
                 Text(
                     text = String.format("%.1fx", currentTotalZoom),
                     color = Color.White,
-                    fontSize = 11.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.widthIn(min = 36.dp),
+                    modifier = Modifier.widthIn(min = 45.dp),
                     textAlign = TextAlign.End
                 )
             }
@@ -943,7 +943,7 @@ fun CombinedZoomFiltersTuneTabContent(
                     imageVector = if (isFrozen) Icons.Default.Contrast else Icons.Default.Exposure,
                     contentDescription = null,
                     tint = themeColor,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(20.dp)
                 )
                 Slider(
                     value = if (isFrozen) contrast else exposureIndex.toFloat(),
@@ -966,21 +966,21 @@ fun CombinedZoomFiltersTuneTabContent(
                 Text(
                     text = if (isFrozen) String.format("%.1fx", contrast) else String.format("%+d", exposureIndex),
                     color = Color.White,
-                    fontSize = 11.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.widthIn(min = 32.dp),
+                    modifier = Modifier.widthIn(min = 40.dp),
                     textAlign = TextAlign.End
                 )
             }
         }
 
-        // 2. Szűrők (Balra) és Gyors Presetek (Jobbra) side-by-side
+        // 2. Szűrők (Balra) és Gyors Presetek (Jobbra) side-by-side (magasság: 35.dp)
         Row(
-            modifier = Modifier.fillMaxWidth().height(36.dp),
+            modifier = Modifier.fillMaxWidth().height(35.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Bal oldal: 5 szűrő gomb
+            // Bal oldal: 5 szűrő gomb (méret: 35.dp)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -989,22 +989,22 @@ fun CombinedZoomFiltersTuneTabContent(
                     val selected = filterMode == mode
                     Box(
                         modifier = Modifier
-                            .size(28.dp)
+                            .size(35.dp)
                             .background(
                                 if (selected) Color(0xFF231D30) else Color(0xFF111115),
-                                RoundedCornerShape(8.dp)
+                                RoundedCornerShape(10.dp)
                             )
                             .border(
                                 1.dp,
                                 if (selected) themeColor else Color(0xFF2E2C33),
-                                RoundedCornerShape(8.dp)
+                                RoundedCornerShape(10.dp)
                             )
                             .clickable { onFilterModeChange(mode) },
                         contentAlignment = Alignment.Center
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(18.dp)
+                                .size(23.dp)
                                 .background(
                                     brush = when (mode) {
                                         FilterMode.NORMAL -> {
@@ -1047,7 +1047,7 @@ fun CombinedZoomFiltersTuneTabContent(
                                     imageVector = Icons.Default.Check,
                                     contentDescription = stringResource(R.string.cd_selected),
                                     tint = if (mode == FilterMode.MONOCHROME) Color.Black else Color.White,
-                                    modifier = Modifier.size(10.dp)
+                                    modifier = Modifier.size(12.dp)
                                 )
                             }
                         }
@@ -1057,7 +1057,7 @@ fun CombinedZoomFiltersTuneTabContent(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Jobb oldal: 4 gyors-zoom preset (1x, 4x, 16x, 64x)
+            // Jobb oldal: 4 gyors-zoom preset (1x, 4x, 16x, 64x) (méret: 45x35.dp)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -1073,12 +1073,12 @@ fun CombinedZoomFiltersTuneTabContent(
                     if (isPresetPossible) {
                         Box(
                             modifier = Modifier
-                                .size(width = 36.dp, height = 28.dp)
+                                .size(width = 45.dp, height = 35.dp)
                                 .background(
                                     if (isSelected) themeColor else Color(0xFF1B1A21),
-                                    RoundedCornerShape(8.dp)
+                                    RoundedCornerShape(10.dp)
                                 )
-                                .border(1.dp, if (isSelected) themeColor else Color(0xFF2E2C33), RoundedCornerShape(8.dp))
+                                .border(1.dp, if (isSelected) themeColor else Color(0xFF2E2C33), RoundedCornerShape(10.dp))
                                 .clickable {
                                     if (isFrozen) {
                                         onFrozenScaleChange(preset)
@@ -1091,7 +1091,7 @@ fun CombinedZoomFiltersTuneTabContent(
                             Text(
                                 text = String.format("%.0fx", preset),
                                 color = if (isSelected) Color.Black else Color.White,
-                                fontSize = 10.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -1100,10 +1100,10 @@ fun CombinedZoomFiltersTuneTabContent(
             }
         }
 
-        // 3. Csúszkasor 2: Fényerő (Balra) és Élesítés (Jobbra) side-by-side (csak kimerevített képen)
+        // 3. Csúszkasor 2: Fényerő (Balra) és Élesítés (Jobbra) side-by-side (csak kimerevített képen) (magasság: 45.dp)
         if (isFrozen) {
             Row(
-                modifier = Modifier.fillMaxWidth().height(36.dp),
+                modifier = Modifier.fillMaxWidth().height(45.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -1117,7 +1117,7 @@ fun CombinedZoomFiltersTuneTabContent(
                         imageVector = Icons.Default.LightMode,
                         contentDescription = null,
                         tint = themeColor,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                     Slider(
                         value = brightness,
@@ -1133,9 +1133,9 @@ fun CombinedZoomFiltersTuneTabContent(
                     Text(
                         text = String.format("%.0f", brightness),
                         color = Color.White,
-                        fontSize = 11.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.widthIn(min = 28.dp),
+                        modifier = Modifier.widthIn(min = 35.dp),
                         textAlign = TextAlign.End
                     )
                 }
@@ -1147,7 +1147,7 @@ fun CombinedZoomFiltersTuneTabContent(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Canvas(
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(20.dp)
                     ) {
                         val path = Path().apply {
                             moveTo(size.width / 2f, 0f)
@@ -1159,7 +1159,7 @@ fun CombinedZoomFiltersTuneTabContent(
                             path = path,
                             color = themeColor,
                             style = Stroke(
-                                width = 1.5.dp.toPx(),
+                                width = 2.dp.toPx(),
                                 cap = StrokeCap.Round,
                                 join = StrokeJoin.Round
                             )
@@ -1183,9 +1183,9 @@ fun CombinedZoomFiltersTuneTabContent(
                     Text(
                         text = String.format("%.1f", sharpenStrength),
                         color = Color.White,
-                        fontSize = 11.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.widthIn(min = 24.dp),
+                        modifier = Modifier.widthIn(min = 30.dp),
                         textAlign = TextAlign.End
                     )
                 }

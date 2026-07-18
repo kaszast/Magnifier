@@ -1197,6 +1197,10 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                         .padding(bottom = innerPadding.calculateBottomPadding() + 16.dp)
                         .background(Color(0xE60D0C11), RoundedCornerShape(28.dp))
                         .border(1.dp, Color(0xFF2E2C33).copy(alpha = 0.6f), RoundedCornerShape(28.dp))
+                        .clickable(
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            indication = null
+                        ) { /* Consumes clicks to prevent toggling controls visibility */ }
                         .padding(horizontal = 18.dp, vertical = 14.dp)
                 ) {
                 Column(
