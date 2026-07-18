@@ -331,8 +331,6 @@ fun ZoomMinimap(
 @Composable
 fun TopLeftControls(
     themeColor: Color,
-    controlsVisible: Boolean,
-    onToggleControls: () -> Unit,
     isFrozen: Boolean,
     availableCameras: List<CameraInfo>,
     selectedCameraIndex: Int,
@@ -345,26 +343,6 @@ fun TopLeftControls(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // "Szem" gomb: a kezelőszervek elrejtése/megjelenítése. A Box itt gombként
-        // viselkedik: kör alakú (CircleShape) félig áttetsző háttér + keret, a
-        // .clickable { onToggleControls() } teszi kattinthatóvá. Az ikon aszerint vált
-        // (VisibilityOff / Visibility), hogy a kezelőszervek épp láthatók-e.
-        // Floating Controls Visibility Toggle Button (Full Screen)
-        Box(
-            modifier = Modifier
-                .background(Color(0xFF09090B).copy(alpha = 0.75f), CircleShape)
-                .border(1.5.dp, themeColor.copy(alpha = 0.6f), CircleShape)
-                .clickable { onToggleControls() }
-                .padding(10.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = if (controlsVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                contentDescription = stringResource(R.string.cd_toggle_controls),
-                tint = themeColor,
-                modifier = Modifier.size(20.dp)
-            )
-        }
 
         // Kamera-jelző és -váltó. Feltételes megjelenítés: csak akkor rajzoljuk ki,
         // ha NEM vagyunk kimerevített módban (élő kép van) ÉS van legalább egy elérhető
@@ -627,7 +605,6 @@ fun ControlTabBar(
         // az strings.xml-ből tölti a feliratokat, így fordíthatóak maradnak.
         val tabs = listOf(
             Pair(Icons.Default.ZoomIn, stringResource(R.string.tab_zoom)),
-            Pair(Icons.Default.Tune, stringResource(R.string.tab_filters_tune)),
             Pair(Icons.Default.Settings, stringResource(R.string.tab_settings))
         )
 

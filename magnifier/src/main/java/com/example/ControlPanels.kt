@@ -3,6 +3,8 @@ package com.example
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -845,6 +847,409 @@ fun SettingsTabContent(
                     contentDescription = stringResource(R.string.action_show_tutorial),
                     tint = themeColor,
                     modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CombinedZoomFiltersTuneTabContent(
+    appVersion: String,
+    themeColor: Color,
+    isFrozen: Boolean,
+    frozenScale: Float,
+    onFrozenScaleChange: (Float) -> Unit,
+    liveZoomRatio: Float,
+    extraDigitalZoom: Float,
+    maxZoom: Float,
+    sliderMin: Float,
+    sliderMax: Float,
+    presets: List<Float>,
+    onApplyTotalZoom: (Float, Boolean) -> Unit,
+    filterMode: FilterMode,
+    onFilterModeChange: (FilterMode) -> Unit,
+    contrast: Float,
+    onContrastChange: (Float) -> Unit,
+    brightness: Float,
+    onBrightnessChange: (Float) -> Unit,
+    exposureIndex: Int,
+    onExposureIndexChange: (Int) -> Unit,
+    minExposureIndex: Int,
+    maxExposureIndex: Int,
+    sharpenStrength: Float,
+    onSharpenStrengthChange: (Float) -> Unit,
+) {
+    val scrollState = rememberScrollState()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(scrollState),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        val currentTotalZoom = if (isFrozen) frozenScale else (liveZoomRatio * extraDigitalZoom)
+        val isDigitalRange = !isFrozen && (liveZoomRatio * extraDigitalZoom > maxZoom)
+
+        // 1. Fejlécsor (egyesített)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ZoomIn,
+                    contentDescription = stringResource(R.string.tab_zoom),
+                    tint = themeColor,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = "v$appVersion",
+                    color = themeColor,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                if (isDigitalRange) {
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFFD0BCFF).copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Memory,
+                            contentDescription = stringResource(R.string.cd_digital_zoom),
+                            tint = Color(0xFFD0BCFF),
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // 2. Fő nagyítás vezérlősor: [-] | csúszka | [+] | érték
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(Color(0xFF1B1A21), CircleShape)
+                    .border(1.dp, Color(0xFF2E2C33), CircleShape)
+                    .clickable {
+                        if (isFrozen) {
+                            onFrozenScaleChange(max(0.5f, frozenScale - 0.5f))
+                        } else {
+                            onApplyTotalZoom(liveZoomRatio * extraDigitalZoom - 0.5f, false)
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Remove,
+                    contentDescription = stringResource(R.string.cd_zoom_out),
+                    tint = Color(0xFFE6E1E5),
+                    modifier = Modifier.size(18.dp)
+                 )
+            }
+
+            Slider(
+                value = currentTotalZoom.coerceIn(sliderMin, sliderMax),
+                onValueChange = { newValue ->
+                    if (isFrozen) {
+                        onFrozenScaleChange(newValue)
+                    } else {
+                        onApplyTotalZoom(newValue, false)
+                    }
+                },
+                valueRange = sliderMin..sliderMax,
+                colors = SliderDefaults.colors(
+                    activeTrackColor = themeColor,
+                    thumbColor = themeColor,
+                    inactiveTrackColor = Color(0xFF1B1A21)
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("zoom_slider")
+            )
+
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(Color(0xFF1B1A21), CircleShape)
+                    .border(1.dp, Color(0xFF2E2C33), CircleShape)
+                    .clickable {
+                        if (isFrozen) {
+                            onFrozenScaleChange(min(sliderMax, frozenScale + 0.5f))
+                        } else {
+                            onApplyTotalZoom(liveZoomRatio * extraDigitalZoom + 0.5f, false)
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = stringResource(R.string.cd_zoom_in),
+                    tint = Color(0xFFE6E1E5),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Text(
+                text = String.format("%.1fx", currentTotalZoom),
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Black,
+                modifier = Modifier.widthIn(min = 55.dp),
+                textAlign = TextAlign.End
+            )
+        }
+
+        // 3. Gyors preset-ek
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val availableWidth = maxWidth
+            val itemWidth = 52.dp
+            val spacing = 6.dp
+            val maxFit = ((availableWidth + spacing) / (itemWidth + spacing)).toInt().coerceAtLeast(1)
+            val visiblePresets = presets.take(maxFit)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                visiblePresets.forEach { preset ->
+                    val isSelected = if (isFrozen) {
+                        abs(frozenScale - preset) < 0.15f
+                    } else {
+                        abs((liveZoomRatio * extraDigitalZoom) - preset) < 0.15f
+                    }
+
+                    val isPresetPossible = isFrozen || preset <= sliderMax
+                    if (isPresetPossible) {
+                        Box(
+                            modifier = Modifier
+                                .width(itemWidth)
+                                .heightIn(min = 40.dp)
+                                .background(
+                                    if (isSelected) themeColor else Color(0xFF1B1A21),
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .border(1.dp, if (isSelected) themeColor else Color(0xFF2E2C33), RoundedCornerShape(12.dp))
+                                .clickable {
+                                    if (isFrozen) {
+                                        onFrozenScaleChange(preset)
+                                    } else {
+                                        onApplyTotalZoom(preset, true)
+                                    }
+                                }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                         ) {
+                            Text(
+                                text = if (preset % 1.0f == 0.0f) String.format("%.0fx", preset) else String.format("%.1fx", preset),
+                                color = if (isSelected) Color.Black else Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Elválasztó vonal
+        Spacer(modifier = Modifier.height(4.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(Color(0xFF2E2C33).copy(alpha = 0.35f))
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // 4. Szűrők választó sora
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            FilterMode.values().forEach { mode ->
+                val selected = filterMode == mode
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 40.dp)
+                        .background(
+                            if (selected) Color(0xFF231D30) else Color(0xFF111115),
+                            RoundedCornerShape(14.dp)
+                        )
+                        .border(
+                            1.dp,
+                            if (selected) themeColor else Color(0xFF2E2C33),
+                            RoundedCornerShape(14.dp)
+                        )
+                        .clickable { onFilterModeChange(mode) }
+                        .padding(vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .background(
+                                brush = when (mode) {
+                                    FilterMode.NORMAL -> {
+                                        Brush.sweepGradient(
+                                            colors = listOf(
+                                                Color(0xFFFF007F), Color(0xFFFF0000), Color(0xFFFF7F00),
+                                                Color(0xFFFFFF00), Color(0xFF00FF00), Color(0xFF00FFFF),
+                                                Color(0xFF0000FF), Color(0xFF7F00FF), Color(0xFFFF007F)
+                                            )
+                                        )
+                                    }
+                                    FilterMode.MONOCHROME -> {
+                                        Brush.linearGradient(
+                                            colors = listOf(Color.White, Color.Black)
+                                        )
+                                    }
+                                    FilterMode.INVERTED -> {
+                                        Brush.linearGradient(
+                                            colors = listOf(Color.Cyan, Color.Black)
+                                        )
+                                    }
+                                    FilterMode.YELLOW -> {
+                                        Brush.linearGradient(
+                                            colors = listOf(Color(0xFFFBBF24), Color.Black)
+                                        )
+                                    }
+                                    FilterMode.RED -> {
+                                        Brush.linearGradient(
+                                            colors = listOf(Color.Red, Color.Black)
+                                        )
+                                    }
+                                },
+                                shape = CircleShape
+                            )
+                            .border(1.dp, Color(0xFF2E2C33).copy(alpha = 0.5f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = stringResource(R.string.cd_selected),
+                                tint = if (mode == FilterMode.MONOCHROME) Color.Black else Color.White,
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        // 5. Csúszkasorok (expozíció/kontraszt, fényerő, élesítés)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = if (isFrozen) Icons.Default.Contrast else Icons.Default.Exposure,
+                contentDescription = stringResource(if (isFrozen) R.string.label_contrast else R.string.label_exposure),
+                tint = themeColor,
+                modifier = Modifier.size(18.dp)
+            )
+            Slider(
+                value = if (isFrozen) contrast else exposureIndex.toFloat(),
+                onValueChange = { newValue ->
+                    if (isFrozen) {
+                        onContrastChange(newValue)
+                    } else {
+                        onExposureIndexChange(newValue.roundToInt())
+                    }
+                },
+                valueRange = if (isFrozen) 1.0f..3.0f else minExposureIndex.toFloat()..maxExposureIndex.toFloat(),
+                steps = if (!isFrozen && (maxExposureIndex - minExposureIndex > 0)) maxExposureIndex - minExposureIndex - 1 else 0,
+                colors = SliderDefaults.colors(
+                    activeTrackColor = themeColor,
+                    thumbColor = themeColor,
+                    inactiveTrackColor = Color(0xFF1B1A21)
+                ),
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        if (isFrozen) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.LightMode,
+                    contentDescription = stringResource(R.string.label_brightness),
+                    tint = themeColor,
+                    modifier = Modifier.size(18.dp)
+                )
+                Slider(
+                    value = brightness,
+                    onValueChange = { onBrightnessChange(it) },
+                    valueRange = -80f..80f,
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = themeColor,
+                        thumbColor = themeColor,
+                        inactiveTrackColor = Color(0xFF1B1A21)
+                    ),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        if (isFrozen) {
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Canvas(
+                    modifier = Modifier.size(18.dp)
+                ) {
+                    val path = Path().apply {
+                        moveTo(size.width / 2f, 0f)
+                        lineTo(size.width, size.height)
+                        lineTo(0f, size.height)
+                        close()
+                    }
+                    drawPath(
+                        path = path,
+                        color = themeColor,
+                        style = Stroke(
+                            width = 2.dp.toPx(),
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
+                }
+                var draggingValue by remember(sharpenStrength) { mutableFloatStateOf(sharpenStrength) }
+
+                Slider(
+                    value = draggingValue,
+                    onValueChange = { draggingValue = it },
+                    onValueChangeFinished = { onSharpenStrengthChange(draggingValue) },
+                    valueRange = 0.0f..10.0f,
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = themeColor,
+                        thumbColor = themeColor,
+                        inactiveTrackColor = Color(0xFF1B1A21)
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("sharpen_strength_slider")
                 )
             }
         }

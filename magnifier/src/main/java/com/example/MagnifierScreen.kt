@@ -1064,28 +1064,9 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                                                 applyTotalZoom((minZoom + maxZoom) / 2.0f, resetPan = true)
                                             }
                                         },
-                                        onTap = { offset ->
-                                            // Rejtett kezelőszerveknél az első koppintás csak visszahozza a UI-t.
-                                            if (!controlsVisible) {
-                                                controlsVisible = true
-                                            } else {
-                                                // Tap-to-focus: a koppintás helyére fókuszálunk. Előbb elindítjuk
-                                                // a vizuális gyűrű-animációt (focusPoint + focusTrigger).
-                                                focusPoint = offset
-                                                focusTrigger++
-
-                                                // ZOOM-KORREKCIÓ: a koppintás a KÉPERNYŐN történik, de a fókusz-pontot
-                                                // a NEM-nagyított kamerakép koordinátáiban kell megadni. A digitális zoom
-                                                // a graphicsLayerrel csak a megjelenítést nagyítja/tolja, ezért a képernyő-
-                                                // koordinátából vissza kell számolni: levonjuk az eltolást (pan), majd
-                                                // elosztjuk a digitális zoommal → így kapjuk a valódi forrás-koordinátát.
-                                                val factory = previewView.meteringPointFactory
-                                                val correctedX = (offset.x - extraDigitalPan.x) / extraDigitalZoom
-                                                val correctedY = (offset.y - extraDigitalPan.y) / extraDigitalZoom
-                                                val point = factory.createPoint(correctedX, correctedY)
-                                                val action = FocusMeteringAction.Builder(point).build()
-                                                camera?.cameraControl?.startFocusAndMetering(action)
-                                            }
+                                        onTap = {
+                                            // A koppintás a kezelőszervek láthatóságát váltja.
+                                            controlsVisible = !controlsVisible
                                         }
                                     )
                                 }
@@ -1113,11 +1094,9 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                                         frozenScale = if (frozenScale > 1.0f) 1.0f else 3.0f
                                         frozenOffset = Offset.Zero
                                     },
-                                    // Fagyasztott módban nincs tap-to-focus; a koppintás csak a rejtett UI-t hozza vissza.
+                                    // Fagyasztott módban a koppintás a kezelőszervek láthatóságát váltja.
                                     onTap = {
-                                        if (!controlsVisible) {
-                                            controlsVisible = true
-                                        }
+                                        controlsVisible = !controlsVisible
                                     }
                                 )
                             }
@@ -1190,8 +1169,6 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                 ) {
                     TopLeftControls(
                         themeColor = themeColor,
-                        controlsVisible = controlsVisible,
-                        onToggleControls = { controlsVisible = !controlsVisible },
                         isFrozen = isFrozen,
                         availableCameras = availableCameras,
                         selectedCameraIndex = selectedCameraIndex,
@@ -1233,7 +1210,7 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                             .animateContentSize()
                     ) {
                         when (activeTab) {
-                            0 -> ZoomTabContent(
+                            0 -> CombinedZoomFiltersTuneTabContent(
                                 appVersion = appVersion,
                                 themeColor = themeColor,
                                 isFrozen = isFrozen,
@@ -1245,14 +1222,9 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                                 sliderMin = sliderMin,
                                 sliderMax = sliderMax,
                                 presets = presets,
-                                onApplyTotalZoom = { target, resetPan -> applyTotalZoom(target, resetPan) }
-                            )
-                            1 -> FiltersAndTuneTabContent(
-                                appVersion = appVersion,
-                                themeColor = themeColor,
+                                onApplyTotalZoom = { target, resetPan -> applyTotalZoom(target, resetPan) },
                                 filterMode = filterMode,
                                 onFilterModeChange = { filterMode = it },
-                                isFrozen = isFrozen,
                                 contrast = contrast,
                                 onContrastChange = { contrast = it },
                                 brightness = brightness,
@@ -1264,7 +1236,7 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                                 sharpenStrength = sharpenStrength,
                                 onSharpenStrengthChange = { sharpenStrength = it }
                             )
-                            2 -> SettingsTabContent(
+                            1 -> SettingsTabContent(
                                 appVersion = appVersion,
                                 themeColor = themeColor,
                                 themeOptions = themeOptions,
