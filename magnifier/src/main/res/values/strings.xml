@@ -87,10 +87,10 @@
     <string name="action_start_using">Kezdés</string>
 
     <!-- Tip Jar / Támogatás -->
-    <string name="tip_jar_title">Támogasd a fejlesztőt! ❤️</string>
+    <string name="tip_jar_title">Támogasd a fejlesztőt!️</string>
     <string name="tip_jar_description">Ha hasznosnak találod ezt a reklámmentes nagyítót, támogasd a munkámat egy kávé árával. Köszönöm!</string>
-    <string name="tip_tier_small">Espresso borravaló ☕</string>
-    <string name="tip_tier_medium">Cappuccino borravaló ☕✨</string>
-    <string name="tip_tier_large">Latte borravaló ☕💖</string>
+    <string name="tip_tier_small">Espresso</string>
+    <string name="tip_tier_medium">Cappuccino</string>
+    <string name="tip_tier_large">Latte</string>
     <string name="action_cancel">Mégse</string>
 </resources>
