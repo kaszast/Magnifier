@@ -18,3 +18,5 @@ local.properties
 debug.keystore
 claude.MD
 /tasks
+/magnifier/release/
+.idea/*.tmp

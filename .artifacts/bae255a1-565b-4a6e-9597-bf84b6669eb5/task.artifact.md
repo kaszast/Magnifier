@@ -1,0 +1,4 @@
+- [ ] Update `.gitignore` to exclude build/temp files
+- [ ] Stage untracked image assets and `.gitignore`
+- [ ] Commit changes
+- [ ] Verify `git status`
