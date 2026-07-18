@@ -351,10 +351,11 @@ fun TopLeftControls(
         if (!isFrozen && availableCameras.isNotEmpty()) {
             Box(
                 modifier = Modifier
+                    .height(40.dp)
                     .background(Color(0xFF09090B).copy(alpha = 0.75f), RoundedCornerShape(20.dp))
                     .border(1.5.dp, themeColor.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
                     .clickable { onSwapCamera() }
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                    .padding(horizontal = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Row(
