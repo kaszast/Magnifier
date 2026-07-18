@@ -56,6 +56,7 @@ import android.widget.TextView
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -1198,3 +1199,95 @@ fun CombinedZoomFiltersTuneTabContent(
         }
     }
 }
+
+@Preview(showBackground = true, backgroundColor = 0xFF0D0C11)
+@Composable
+fun CombinedZoomFiltersTuneTabContentPreviewLive() {
+    Box(modifier = Modifier.padding(16.dp)) {
+        CombinedZoomFiltersTuneTabContent(
+            appVersion = "1.0.0",
+            themeColor = Color(0xFF8B5CF6),
+            isFrozen = false,
+            frozenScale = 1.0f,
+            onFrozenScaleChange = {},
+            liveZoomRatio = 1.0f,
+            extraDigitalZoom = 1.0f,
+            maxZoom = 8.0f,
+            sliderMin = 1.0f,
+            sliderMax = 8.0f,
+            presets = listOf(1.0f, 2.0f, 4.0f, 8.0f),
+            onApplyTotalZoom = { _, _ -> },
+            contrast = 1.0f,
+            onContrastChange = {},
+            brightness = 0f,
+            onBrightnessChange = {},
+            filterMode = FilterMode.NORMAL,
+            onFilterModeChange = {},
+            exposureIndex = 0,
+            onExposureIndexChange = {},
+            minExposureIndex = -4,
+            maxExposureIndex = 4,
+            sharpenStrength = 0.0f,
+            onSharpenStrengthChange = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0D0C11)
+@Composable
+fun CombinedZoomFiltersTuneTabContentPreviewFrozen() {
+    Box(modifier = Modifier.padding(16.dp)) {
+        CombinedZoomFiltersTuneTabContent(
+            appVersion = "1.0.0",
+            themeColor = Color(0xFF8B5CF6),
+            isFrozen = true,
+            frozenScale = 2.0f,
+            onFrozenScaleChange = {},
+            liveZoomRatio = 1.0f,
+            extraDigitalZoom = 1.0f,
+            maxZoom = 8.0f,
+            sliderMin = 1.0f,
+            sliderMax = 8.0f,
+            presets = listOf(1.0f, 2.0f, 4.0f, 8.0f),
+            onApplyTotalZoom = { _, _ -> },
+            contrast = 1.5f,
+            onContrastChange = {},
+            brightness = 20f,
+            onBrightnessChange = {},
+            filterMode = FilterMode.YELLOW,
+            onFilterModeChange = {},
+            exposureIndex = 0,
+            onExposureIndexChange = {},
+            minExposureIndex = -4,
+            maxExposureIndex = 4,
+            sharpenStrength = 5.0f,
+            onSharpenStrengthChange = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF0D0C11)
+@Composable
+fun SettingsTabContentPreview() {
+    Box(modifier = Modifier.padding(16.dp)) {
+        SettingsTabContent(
+            appVersion = "1.0.0",
+            themeColor = Color(0xFF8B5CF6),
+            themeOptions = listOf(
+                AppThemeColor(R.string.theme_purple, Color(0xFFB180FF)),
+                AppThemeColor(R.string.theme_green, Color(0xFF00FF87)),
+                AppThemeColor(R.string.theme_gold, Color(0xFFFFB300)),
+                AppThemeColor(R.string.theme_blue, Color(0xFF00D2FF)),
+                AppThemeColor(R.string.theme_orange, Color(0xFFFF6B00))
+            ),
+            currentThemeIndex = 0,
+            onThemeIndexChange = {},
+            onRateApp = {},
+            onShowTutorial = {},
+            onShowTipJar = {},
+            currentLanguage = "hu",
+            onChangeLanguage = {}
+        )
+    }
+}
+
