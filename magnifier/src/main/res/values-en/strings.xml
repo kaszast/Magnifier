@@ -91,7 +91,7 @@
     <string name="tip_jar_title">Support the Developer!️</string>
     <string name="tip_jar_description">If you find this ad-free magnifier useful, please support my work with the price of a coffee. Thank you!</string>
     <string name="tip_tier_small">Espresso</string>
-    <string name="tip_tier_medium">Cappuccino</string>
+    <string name="tip_tier_medium">Mocha</string>
     <string name="tip_tier_large">Latte</string>
     <string name="action_cancel">Cancel</string>
 </resources>
