@@ -1420,8 +1420,7 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                         themeColor = themeColor
                     )
 
-                    // 5. Native Ad Slot - Fixed at the very bottom of the floating card
-                    NativeAdPlaceholder(themeColor)
+
                 }
             }
             }
