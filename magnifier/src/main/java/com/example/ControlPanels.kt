@@ -673,6 +673,7 @@ fun SettingsTabContent(
     onThemeIndexChange: (Int) -> Unit,
     onRateApp: () -> Unit,
     onShowTutorial: () -> Unit,
+    onShowTipJar: () -> Unit,
     currentLanguage: String,
     onChangeLanguage: (String) -> Unit
 ) {
@@ -795,20 +796,38 @@ fun SettingsTabContent(
                         .border(1.dp, Color(0xFF2E2C33), RoundedCornerShape(8.dp))
                 ) {
                     DropdownMenuItem(
-                        text = { Text("🇭🇺 Magyar", color = Color.White, fontSize = 14.sp) },
+                        text = { Text("Magyar", color = Color.White, fontSize = 14.sp) },
                         onClick = {
                             isMenuExpanded = false
                             onChangeLanguage("hu")
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("🇬🇧 English", color = Color.White, fontSize = 14.sp) },
+                        text = { Text("English", color = Color.White, fontSize = 14.sp) },
                         onClick = {
                             isMenuExpanded = false
                             onChangeLanguage("en")
                         }
                     )
                 }
+            }
+
+            // Támogatás (Tip Jar) gomb a nyelvválasztó és a súgó között
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp)
+                    .background(Color(0xFF1F1E26), RoundedCornerShape(12.dp))
+                    .border(1.dp, Color(0xFF2E2C33), RoundedCornerShape(12.dp))
+                    .clickable { onShowTipJar() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Favorite,
+                    contentDescription = "Támogatás",
+                    tint = themeColor,
+                    modifier = Modifier.size(20.dp)
+                )
             }
 
             // Súgó gomb

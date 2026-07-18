@@ -86,4 +86,12 @@
     <string name="action_next">Next</string>
     <string name="action_skip">Skip</string>
     <string name="action_start_using">Start</string>
+
+    <!-- Tip Jar / Támogatás -->
+    <string name="tip_jar_title">Support the Developer! ❤️</string>
+    <string name="tip_jar_description">If you find this ad-free magnifier useful, please support my work with the price of a coffee. Thank you!</string>
+    <string name="tip_tier_small">Espresso Tip ☕</string>
+    <string name="tip_tier_medium">Cappuccino Tip ☕✨</string>
+    <string name="tip_tier_large">Latte Tip ☕💖</string>
+    <string name="action_cancel">Cancel</string>
 </resources>

@@ -509,6 +509,10 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
     // Az élő digitális zoomhoz készített, háttérben élesített overlay-kép (lásd lentebbi effekt).
     var liveSharpenedBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
+    // Támogatás (Tip Jar) állapotai és segédosztálya
+    val billingHelper = remember { BillingHelper(context, coroutineScope) }
+    var showTipJar by remember { mutableStateOf(false) }
+
     // ========================================================================
     //  2. EFFEKTEK (side effects) — állapotváltozásra reagáló mellékhatások
     // ========================================================================
@@ -1287,6 +1291,9 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                                 onShowTutorial = {
                                     showWalkthrough = true
                                 },
+                                onShowTipJar = {
+                                    showTipJar = true
+                                },
                                 currentLanguage = currentLanguage,
                                 onChangeLanguage = onChangeLanguage
                             )
@@ -1580,6 +1587,20 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                     onRateNever = {
                         showRateDialog = false
                         prefs.edit().putBoolean("rate_never", true).apply()
+                    }
+                )
+            }
+
+            // Támogatás (Tip Jar) párbeszédpanel
+            if (showTipJar) {
+                TipJarDialog(
+                    themeColor = themeColor,
+                    onDismiss = { showTipJar = false },
+                    onSelectTip = { productId ->
+                        showTipJar = false
+                        billingHelper.launchBillingFlow(context, productId) {
+                            // Mock sikeres fizetés utáni szimulált események (ha szükséges)
+                        }
                     }
                 )
             }
