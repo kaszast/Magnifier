@@ -483,33 +483,11 @@ fun applyColorFilterToBitmap(source: Bitmap, filterMode: FilterMode, contrast: F
  *
  *        0      -s       0
  *       -s    1+4s      -s          ( s = strength )
- *        0      -s       0
- *
  * A középső pixel súlya 1+4s, a négy szomszédé -s. A súlyok összege 1+4s-4s = 1,
  * ezért EGYENLETES (sík) felületen a fényerő nem változik; ahol viszont él van,
- * ott a különbséget felerősíti -> a kép "élesebbnek" tűnik. (A négy sarkot nem
- * használjuk, ezért ez egy 4-szomszédos / "plusz alakú" kernel.)
- *
+ * ott a különbséget felerősíti -> a kép "élesebbnek" tűnik.
  * ------------------------------------------------------------------------
- * MIÉRT FIXPONTOS (10 bit, *1024) ÉS NEM LEBEGŐPONTOS?
- * ------------------------------------------------------------------------
- * A szűrő MINDEN pixelre lefut (több millió pixel). A lebegőpontos (Float)
- * szorzás/osztás lassabb, mint az egész (Int) aritmetika. Ezért "fixpontos"
- * (fixed-point) trükköt használunk: a tört súlyokat felszorozzuk 1024-gyel
- * (= 2^10, "10 bites tört"), egész számokkal dolgozunk, majd a végén 1024-gyel
- * OSZTUNK vissza. Az 1024-es osztás bittologatással (shr 10) villámgyors, mert
- * 2-hatvány. Így elkerüljük a lassú Float-műveleteket pixelenként.
- *
- * ------------------------------------------------------------------------
- * ÉL-ADAPTÍV INTERPOLÁCIÓ (miért nem élesít sík felületen?)
- * ------------------------------------------------------------------------
- * Az élesítés a ZAJT (noise) is felerősíti. Ezt elkerülendő minden pixelnél
- * megmérjük a helyi "élességet" (a szomszédok közti max-min színkülönbséget).
- * Sík/egyszínű területen (kicsi különbség -> valószínűleg csak zaj) NEM élesítünk,
- * markáns élnél TELJESEN élesítünk, közte pedig fokozatosan keverünk (interpolálunk)
- * az eredeti és az élesített pixel között. Ez az "adaptive edge-preservation".
  */
-// Highly optimized custom 3x3 convolution sharpening filter in Kotlin with Adaptive Edge-Preservation
 fun sharpenBitmap(src: android.graphics.Bitmap, strength: Float = 0.8f): android.graphics.Bitmap {
     val width = src.width
     val height = src.height
@@ -517,56 +495,40 @@ fun sharpenBitmap(src: android.graphics.Bitmap, strength: Float = 0.8f): android
     // nincs mit feldolgozni -> változatlanul visszaadjuk.
     if (width <= 2 || height <= 2) return src
 
-    // A képet egyetlen lineáris int-tömbbe olvassuk (soronként egymás után), mert
-    // a tömb-hozzáférés sokkal gyorsabb, mint pixelenként a Bitmap API-t hívni.
+    // A képet egyetlen lineáris int-tömbbe olvassuk a nagy sebességért
     val pixels = IntArray(width * height)
     src.getPixels(pixels, 0, width, 0, 0, width, height)
     val outPixels = IntArray(width * height)
 
-    // Copy edge pixels as fallback
-    // A kép legszélső pixelsorait (amiknek nincs teljes szomszédságuk) nem dolgozzuk
-    // fel, ezért előre bemásoljuk őket változatlanul a kimenetbe.
+    // A széleket fallbackként átmásoljuk
     System.arraycopy(pixels, 0, outPixels, 0, pixels.size)
 
-    // Calculate kernel weights based on strength and convert to fixed-point (10-bit fraction, i.e., multiplied by 1024)
-    // A fenti Laplace-kernel súlyai az erősségből: közép = 1+4s, szomszéd = -s.
+    // Laplace-kernel súlyai a megadott erősségből: közép = 1 + 4*strength, szomszédok = -strength
     val centerWeight = 1f + 4f * strength
     val neighborWeight = -strength
 
-    // Fixpontos átváltás: a tört súlyokat *1024-gyel egésszé alakítjuk (lásd fent).
+    // Fixpontos átváltás (10 bites pontosság)
     val centerWeightInt = (centerWeight * 1024).toInt()
     val neighborWeightInt = (neighborWeight * 1024).toInt()
 
-    // Csak a BELSŐ pixeleken megyünk végig (1 .. szél-1), hogy minden vizsgált
-    // pixelnek meglegyen mind a négy szomszédja.
     for (y in 1 until height - 1) {
-        // Az aktuális sor kezdő-indexe a lineáris tömbben, plusz az előző/következő sor.
         val row = y * width
         val prevRow = row - width
         val nextRow = row + width
         for (x in 1 until width - 1) {
             val idx = row + x
-            // A középső pixel és a négy közvetlen szomszédja (fent/lent/bal/jobb).
             val center = pixels[idx]
             val top = pixels[prevRow + x]
             val bottom = pixels[nextRow + x]
             val left = pixels[idx - 1]
             val right = pixels[idx + 1]
 
-            // Center channels
-            // CSATORNÁK KINYERÉSE bitműveletekkel a 0xAARRGGBB int-ből:
-            //   ushr N = "unsigned/logical right shift", N bittel jobbra told, felülre 0-t húz
-            //            (a sima shr előjelet terjesztene; itt a felső bit is adat, ezért ushr).
-            //   and 0xFF = az alsó 8 bit maszkolása, azaz pontosan egy csatorna (0..255).
-            // Az alfa a 24. bittől, a piros a 16.-tól, a zöld a 8.-tól, a kék a legalsó 8 bit.
+            // Csatornák kinyerése
             val cA = (center ushr 24) and 0xFF
             val cR = (center ushr 16) and 0xFF
             val cG = (center ushr 8) and 0xFF
             val cB = center and 0xFF
 
-            // Neighbor channels
-            // A szomszédoknál csak az R/G/B kell (az alfát nem élesítjük), ugyanazzal a
-            // ushr + and 0xFF mintával kinyerve. t=top, b=bottom, l=left, r=right.
             val tR = (top ushr 16) and 0xFF
             val tG = (top ushr 8) and 0xFF
             val tB = top and 0xFF
@@ -583,62 +545,18 @@ fun sharpenBitmap(src: android.graphics.Bitmap, strength: Float = 0.8f): android
             val rG = (right ushr 8) and 0xFF
             val rB = right and 0xFF
 
-            // Adaptive edge intensity calculation
-            // Helyi "élesség" mérése: az 5 pixel (közép + 4 szomszéd) közti
-            // legnagyobb és legkisebb érték különbsége, csatornánként.
-            val maxR = maxOf(cR, tR, bR, lR, rR)
-            val minR = minOf(cR, tR, bR, lR, rR)
-            val maxG = maxOf(cG, tG, bG, lG, rG)
-            val minG = minOf(cG, tG, bG, lG, rG)
-            val maxB = maxOf(cB, tB, bB, lB, rB)
-            val minB = minOf(cB, tB, bB, lB, rB)
+            // Konvolúció kiszámítása
+            var rSharp = (centerWeightInt * cR + neighborWeightInt * (tR + bR + lR + rR)) shr 10
+            var gSharp = (centerWeightInt * cG + neighborWeightInt * (tG + bG + lG + rG)) shr 10
+            var bSharp = (centerWeightInt * cB + neighborWeightInt * (tB + bB + lB + rB)) shr 10
 
-            // A három csatorna szórásának összege = mennyire "élszerű" a környezet.
-            // Kicsi érték -> sík/egyszínű (valószínűleg zaj); nagy érték -> valódi él.
-            val edgeIntensity = (maxR - minR) + (maxG - minG) + (maxB - minB)
+            // Értéktartományba szorítás (clamping)
+            if (rSharp < 0) rSharp = 0 else if (rSharp > 255) rSharp = 255
+            if (gSharp < 0) gSharp = 0 else if (gSharp > 255) gSharp = 255
+            if (bSharp < 0) bSharp = 0 else if (bSharp > 255) bSharp = 255
 
-            // Dynamic interpolation factor (0 = flat/noise, 256 = distinct edge/detail)
-            // k a keverési arány 0..256 skálán (256 = "teljesen élesíts"):
-            //   - <= 24 különbség: sík terület -> 0 (nem élesítünk, nehogy zajt erősítsünk).
-            //   - >= 96 különbség: markáns él -> 256 (teljes élesítés).
-            //   - közte: lineáris átmenet. A /72 a (96-24) tartomány normálása.
-            val k = when {
-                edgeIntensity <= 24 -> 0
-                edgeIntensity >= 96 -> 256
-                else -> ((edgeIntensity - 24) * 256) / 72
-            }
-
-            if (k == 0) {
-                // Sík terület: az eredeti pixelt visszük tovább változtatás nélkül.
-                outPixels[idx] = center
-            } else {
-                // Apply Laplacian filter with center weight and neighbor weight using fixed-point math
-                // A Laplace-kernel egész (fixpontos) aritmetikával: közép*középsúly +
-                // szomszédok összege*szomszédsúly. A `shr 10` = osztás 1024-gyel, ami
-                // visszaadja a fixpontos szorzáskor bevitt szorzót (lásd fent).
-                var rSharp = (centerWeightInt * cR + neighborWeightInt * (tR + bR + lR + rR)) shr 10
-                var gSharp = (centerWeightInt * cG + neighborWeightInt * (tG + bG + lG + rG)) shr 10
-                var bSharp = (centerWeightInt * cB + neighborWeightInt * (tB + bB + lB + rB)) shr 10
-
-                // Clamp to valid pixel range
-                // Az élesítés túllőhet 0 alá vagy 255 fölé -> visszavágjuk a 0..255 sávba.
-                if (rSharp < 0) rSharp = 0 else if (rSharp > 255) rSharp = 255
-                if (gSharp < 0) gSharp = 0 else if (gSharp > 255) gSharp = 255
-                if (bSharp < 0) bSharp = 0 else if (bSharp > 255) bSharp = 255
-
-                // Interpolate between original and sharpened pixel based on local edge intensity
-                // Lineáris interpoláció (keverés) az eredeti (súly: 256-k) és az élesített
-                // (súly: k) pixel között. Az `ushr 8` osztás 256-tal (a k skálája), így az
-                // eredmény újra 0..255. k=256-nál teljesen az élesített, kis k-nál inkább az eredeti.
-                val r = (cR * (256 - k) + rSharp * k) ushr 8
-                val g = (cG * (256 - k) + gSharp * k) ushr 8
-                val b = (cB * (256 - k) + bSharp * k) ushr 8
-
-                // Az új pixel összerakása 0xAARRGGBB int-té: `shl` = balra told (a fordítottja
-                // a fenti ushr-nek), majd `or`-ral egymás mellé illesztjük a csatornákat.
-                // Az eredeti alfát (cA) érintetlenül visszatesszük a 24. bitre.
-                outPixels[idx] = (cA shl 24) or (r shl 16) or (g shl 8) or b
-            }
+            // Új pixel összerakása
+            outPixels[idx] = (cA shl 24) or (rSharp shl 16) or (gSharp shl 8) or bSharp
         }
     }
 
