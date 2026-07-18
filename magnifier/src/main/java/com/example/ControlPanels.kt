@@ -886,11 +886,11 @@ fun CombinedZoomFiltersTuneTabContent(
     ) {
         val currentTotalZoom = if (isFrozen) frozenScale else (liveZoomRatio * extraDigitalZoom)
 
-        // 1. Csúszkasor 1: Zoom (Balra) és Expozíció/Kontraszt (Jobbra) side-by-side (magasság: 40.dp)
+        // 1. Csúszkasor 1: Zoom (Balra, weight=1f) és Gyors Presetek (Jobbra, fix szélesség) side-by-side (magasság: 40.dp)
         Row(
             modifier = Modifier.fillMaxWidth().height(40.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             // Bal oldal: Zoom
             Row(
@@ -933,48 +933,52 @@ fun CombinedZoomFiltersTuneTabContent(
                 )
             }
 
-            // Jobb oldal: Expozíció/Kontraszt
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Jobb oldal: 4 gyors-zoom preset (1x, 2x, 4x, 8x) (méret: 26x40.dp)
             Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = if (isFrozen) Icons.Default.Contrast else Icons.Default.Exposure,
-                    contentDescription = null,
-                    tint = themeColor,
-                    modifier = Modifier.size(20.dp)
-                )
-                Slider(
-                    value = if (isFrozen) contrast else exposureIndex.toFloat(),
-                    onValueChange = { newValue ->
-                        if (isFrozen) {
-                            onContrastChange(newValue)
-                        } else {
-                            onExposureIndexChange(newValue.roundToInt())
+                val compactPresets = listOf(1.0f, 2.0f, 4.0f, 8.0f)
+                compactPresets.forEach { preset ->
+                    val isSelected = if (isFrozen) {
+                        abs(frozenScale - preset) < 0.15f
+                    } else {
+                        abs((liveZoomRatio * extraDigitalZoom) - preset) < 0.15f
+                    }
+                    val isPresetPossible = isFrozen || preset <= sliderMax
+                    if (isPresetPossible) {
+                        Box(
+                            modifier = Modifier
+                                .size(width = 26.dp, height = 40.dp)
+                                .background(
+                                    if (isSelected) themeColor else Color(0xFF1B1A21),
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .border(1.dp, if (isSelected) themeColor else Color(0xFF2E2C33), RoundedCornerShape(10.dp))
+                                .clickable {
+                                    if (isFrozen) {
+                                        onFrozenScaleChange(preset)
+                                    } else {
+                                        onApplyTotalZoom(preset, true)
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = String.format("%.0fx", preset),
+                                color = if (isSelected) Color.Black else Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
-                    },
-                    valueRange = if (isFrozen) 1.0f..3.0f else minExposureIndex.toFloat()..maxExposureIndex.toFloat(),
-                    steps = if (!isFrozen && (maxExposureIndex - minExposureIndex > 0)) maxExposureIndex - minExposureIndex - 1 else 0,
-                    colors = SliderDefaults.colors(
-                        activeTrackColor = themeColor,
-                        thumbColor = themeColor,
-                        inactiveTrackColor = Color(0xFF1B1A21)
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = if (isFrozen) String.format("%.1fx", contrast) else String.format("%+d", exposureIndex),
-                    color = Color.White,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.widthIn(min = 35.dp),
-                    textAlign = TextAlign.End
-                )
+                    }
+                }
             }
         }
 
-        // 2. Szűrők (Balra) és Gyors Presetek (Jobbra) side-by-side (magasság: 40.dp)
+        // 2. Szűrők (Balra, fix szélesség) és Expozíció/Kontraszt (Jobbra, weight=1f) side-by-side (magasság: 40.dp)
         Row(
             modifier = Modifier.fillMaxWidth().height(40.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -1057,46 +1061,44 @@ fun CombinedZoomFiltersTuneTabContent(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Jobb oldal: 4 gyors-zoom preset (1x, 2x, 4x, 8x) (méret: 26x40.dp)
+            // Jobb oldal: Expozíció/Kontraszt
             Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                val compactPresets = listOf(1.0f, 2.0f, 4.0f, 8.0f)
-                compactPresets.forEach { preset ->
-                    val isSelected = if (isFrozen) {
-                        abs(frozenScale - preset) < 0.15f
-                    } else {
-                        abs((liveZoomRatio * extraDigitalZoom) - preset) < 0.15f
-                    }
-                    val isPresetPossible = isFrozen || preset <= sliderMax
-                    if (isPresetPossible) {
-                        Box(
-                            modifier = Modifier
-                                .size(width = 26.dp, height = 40.dp)
-                                .background(
-                                    if (isSelected) themeColor else Color(0xFF1B1A21),
-                                    RoundedCornerShape(10.dp)
-                                )
-                                .border(1.dp, if (isSelected) themeColor else Color(0xFF2E2C33), RoundedCornerShape(10.dp))
-                                .clickable {
-                                    if (isFrozen) {
-                                        onFrozenScaleChange(preset)
-                                    } else {
-                                        onApplyTotalZoom(preset, true)
-                                    }
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = String.format("%.0fx", preset),
-                                color = if (isSelected) Color.Black else Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                Icon(
+                    imageVector = if (isFrozen) Icons.Default.Contrast else Icons.Default.Exposure,
+                    contentDescription = null,
+                    tint = themeColor,
+                    modifier = Modifier.size(20.dp)
+                )
+                Slider(
+                    value = if (isFrozen) contrast else exposureIndex.toFloat(),
+                    onValueChange = { newValue ->
+                        if (isFrozen) {
+                            onContrastChange(newValue)
+                        } else {
+                            onExposureIndexChange(newValue.roundToInt())
                         }
-                    }
-                }
+                    },
+                    valueRange = if (isFrozen) 1.0f..3.0f else minExposureIndex.toFloat()..maxExposureIndex.toFloat(),
+                    steps = if (!isFrozen && (maxExposureIndex - minExposureIndex > 0)) maxExposureIndex - minExposureIndex - 1 else 0,
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = themeColor,
+                        thumbColor = themeColor,
+                        inactiveTrackColor = Color(0xFF1B1A21)
+                    ),
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = if (isFrozen) String.format("%.1fx", contrast) else String.format("%+d", exposureIndex),
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.widthIn(min = 35.dp),
+                    textAlign = TextAlign.End
+                )
             }
         }
 
