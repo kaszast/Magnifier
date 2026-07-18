@@ -13,6 +13,7 @@
     <string name="tab_zoom">Nagyítás</string>
     <string name="tab_filters">Szűrők</string>
     <string name="tab_tune">Korrekció</string>
+    <string name="tab_filters_tune">Szűrők és Korrekció</string>
     <string name="tab_theme">Téma</string>
 
     <string name="filter_normal">Normál</string>

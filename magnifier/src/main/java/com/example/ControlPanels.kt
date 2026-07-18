@@ -430,64 +430,64 @@ fun ZoomTabContent(
     }
 }
 
-/**
- * SZŰRŐK FÜL tartalma. Egy fejlécsor (paletta-ikon + verzió) alatt egymás
- * mellett megjeleníti az összes elérhető színszűrő-módot (FilterMode enum:
- * NORMAL, MONOCHROME, INVERTED, YELLOW, RED) egy-egy választható kártyaként.
- * Minden kártyán egy színes minta-kör (gradiens) és a mód neve szerepel; a
- * kiválasztott kártyán pipa jelenik meg, és a kerete/felirata a themeColor.
- *
- * Paraméterek (hoistolt):
- *  @param appVersion         kiírt verziószám
- *  @param themeColor         akcentusszín a kijelölés jelzésére
- *  @param filterMode         az AKTUÁLISAN aktív szűrő (ez lesz "selected")
- *  @param onFilterModeChange visszahívás: a felhasználó másik szűrőt választott
- */
 @Composable
-fun FiltersTabContent(
+fun FiltersAndTuneTabContent(
     appVersion: String,
     themeColor: Color,
     filterMode: FilterMode,
     onFilterModeChange: (FilterMode) -> Unit,
+    isFrozen: Boolean,
+    contrast: Float,
+    onContrastChange: (Float) -> Unit,
+    brightness: Float,
+    onBrightnessChange: (Float) -> Unit,
+    exposureIndex: Int,
+    onExposureIndexChange: (Int) -> Unit,
+    minExposureIndex: Int,
+    maxExposureIndex: Int,
+    sharpenStrength: Float,
+    onSharpenStrengthChange: (Float) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        // Fejlécsor: paletta-ikon + verzió (a mintázat minden fülnél azonos).
+        // Fejlécsor: beállítások ikon + verziószám
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Default.ColorLens,
-                contentDescription = stringResource(R.string.tab_filters),
-                tint = themeColor,
-                modifier = Modifier.size(16.dp)
-            )
-            Text(
-                text = "v$appVersion alfa",
-                color = themeColor,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Tune,
+                    contentDescription = stringResource(R.string.tab_filters_tune),
+                    tint = themeColor,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = "v$appVersion",
+                    color = themeColor,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
-        // A szűrő-kártyák sora. A FilterMode.values() az enum összes esetét adja;
-        // mindegyikből egy kártyát rajzolunk. A .weight(1f) minden kártyán azt
-        // jelenti, hogy EGYENLŐ arányban osztoznak a sor teljes szélességén.
+
+        // 1. Szűrők választó sora
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             FilterMode.values().forEach { mode ->
-                // Ez a kártya van-e kiválasztva? (az aktív filterMode-dal egyezik-e)
                 val selected = filterMode == mode
-                // Egy szűrő-kártya. weight(1f) -> egyenlő szélesség; heightIn ->
-                // legalább 52dp magas. A kiválasztott kártya háttere/kerete eltér.
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .heightIn(min = 52.dp)
+                        .heightIn(min = 40.dp)
                         .background(
                             if (selected) Color(0xFF231D30) else Color(0xFF111115),
                             RoundedCornerShape(14.dp)
@@ -501,24 +501,9 @@ fun FiltersTabContent(
                         .padding(vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    // A kártya tartalma függőlegesen: felül a színminta-kör, alatta
-                    // a mód neve; vízszintesen középre igazítva, 4dp térközzel.
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                    // Színminta-kör. A háttér itt nem egyszínű, hanem Brush (ecset):
-                    // a Brush színátmenetet (gradient) tud festeni. Fajták, amiket
-                    // itt látsz:
-                    //   * Brush.sweepGradient(...) — körkörös "tortaszelet" átmenet
-                    //     a szivárvány színeivel -> ez jelzi a NORMAL (szűrő nélküli,
-                    //     teljes színes) módot.
-                    //   * Brush.linearGradient(...) — egyenes vonal menti átmenet két
-                    //     szín közt; a többi mód jellegét mutatja (pl. fehér->fekete
-                    //     a monokrómnál). A shape = CircleShape kör alakúra vágja.
                     Box(
                         modifier = Modifier
-                            .size(28.dp)
+                            .size(24.dp)
                             .background(
                                 brush = when (mode) {
                                     FilterMode.NORMAL -> {
@@ -556,110 +541,23 @@ fun FiltersTabContent(
                             .border(1.dp, Color(0xFF2E2C33).copy(alpha = 0.5f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        // A kiválasztott szűrő körén pipa jelenik meg. A pipa színe a
-                        // monokróm (világos hátterű) mintán fekete, egyébként fehér —
-                        // hogy mindig kontrasztos, olvasható maradjon.
                         if (selected) {
                             Icon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = stringResource(R.string.cd_selected),
                                 tint = if (mode == FilterMode.MONOCHROME) Color.Black else Color.White,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(12.dp)
                             )
                         }
-                    }
-                    // A szűrő neve. A szöveg az enum labelRes erőforrásából jön
-                    // (lokalizált). Kiválasztva a themeColor-t kapja, különben halvány
-                    // szürkét; maxLines = 1 miatt egy sorban marad.
-                    /*
-                    Text(
-                        text = stringResource(mode.labelRes),
-                        color = if (selected) themeColor else Color(0xFFA1A1AA),
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        textAlign = TextAlign.Center
-                    )
-                    */
                     }
                 }
             }
         }
-    }
-}
 
-/**
- * KORREKCIÓ FÜL tartalma. A tartalma függ attól, él-e a kamera vagy be van
- * fagyasztva a kép (isFrozen):
- *  - ÉLŐ módban: expozíció (EV, egész lépésekben) csúszka + élesítés csúszka.
- *  - BEFAGYASZTOTT módban: kontraszt csúszka + fényerő (brightness) csúszka +
- *    élesítés csúszka.
- * Vagyis az első csúszka "kettős célú": élőben az EV-t, fagyasztva a kontrasztot
- * állítja; a fényerő-csúszka pedig csak fagyasztott képnél jelenik meg.
- *
- * Paraméterek (hoistolt; minden érték + hozzá tartozó on...Change lambda):
- *  @param appVersion            kiírt verziószám
- *  @param themeColor            akcentusszín az ikonokhoz/csúszkákhoz
- *  @param isFrozen              él-e a kamera (false) vagy állókép (true)
- *  @param contrast              kontraszt-szorzó (fagyasztott mód), 1.0..3.0
- *  @param onContrastChange      kontraszt módosító visszahívás
- *  @param brightness            fényerő-eltolás (fagyasztott mód), -80..80
- *  @param onBrightnessChange    fényerő módosító visszahívás
- *  @param exposureIndex         a kamera EV-indexe (élő mód), egész
- *  @param onExposureIndexChange EV-index módosító visszahívás
- *  @param minExposureIndex      a kamera által támogatott legkisebb EV-index
- *  @param maxExposureIndex      a kamera által támogatott legnagyobb EV-index
- *  @param sharpenStrength       élesítés (unsharp mask) erőssége, 0.0..10.0
- *  @param onSharpenStrengthChange élesítés módosító visszahívás
- */
-@Composable
-fun TuneTabContent(
-    appVersion: String,
-    themeColor: Color,
-    isFrozen: Boolean,
-    contrast: Float,
-    onContrastChange: (Float) -> Unit,
-    brightness: Float,
-    onBrightnessChange: (Float) -> Unit,
-    exposureIndex: Int,
-    onExposureIndexChange: (Int) -> Unit,
-    minExposureIndex: Int,
-    maxExposureIndex: Int,
-    sharpenStrength: Float,
-    onSharpenStrengthChange: (Float) -> Unit,
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        // Fejlécsor. Az ikon a móddal változik: fagyasztva kontraszt-ikon, élőben
-        // expozíció-ikon (a fül fő funkcióját tükrözi).
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Icon(
-                    imageVector = if (isFrozen) Icons.Default.Contrast else Icons.Default.Exposure,
-                    contentDescription = stringResource(R.string.tab_tune),
-                    tint = themeColor,
-                    modifier = Modifier.size(18.dp)
-                )
-                Text(
-                    text = "v$appVersion alfa",
-                    color = themeColor,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
+        Spacer(modifier = Modifier.height(2.dp))
 
-        // ELSŐ csúszkasor — "kettős célú": fagyasztva a KONTRASZTOT, élőben az
-        // EXPOZÍCIÓT (EV) állítja. Az ikon és a contentDescription is ehhez igazodik.
+        // 2. Csúszkasorok (expozíció/kontraszt, fényerő, élesítés)
+        // ELSŐ csúszkasor — "kettős célú": fagyasztva a KONTRASZTOT, élőben az EXPOZÍCIÓT (EV) állítja.
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -671,11 +569,6 @@ fun TuneTabContent(
                 tint = themeColor,
                 modifier = Modifier.size(18.dp)
             )
-            // value: fagyasztva a contrast (Float), élőben az egész EV-index Float-ra
-            // konvertálva. valueRange szintén a módtól függ (1.0..3.0 vs EV min..max).
-            // steps: ez adja a csúszka "kattanós" (diszkrét) viselkedését — az EV
-            // csak egész lépésekben mozogjon. A steps a KÖZTES osztáspontok száma,
-            // ezért (max - min - 1). Fagyasztva 0 = folytonos csúszka.
             Slider(
                 value = if (isFrozen) contrast else exposureIndex.toFloat(),
                 onValueChange = { newValue ->
@@ -694,21 +587,9 @@ fun TuneTabContent(
                 ),
                 modifier = Modifier.weight(1f)
             )
-            // Érték-felirat: fagyasztva "2.0x" (kontraszt), élőben "+1 EV" jellegű.
-            /*
-            Text(
-                text = if (isFrozen) String.format("%.1fx", contrast) else "$exposureIndex EV",
-                color = Color.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.widthIn(min = 55.dp),
-                textAlign = TextAlign.End
-            )
-            */
         }
 
-        // FÉNYERŐ csúszka — CSAK befagyasztott képnél jelenik meg (élő módban az
-        // expozíció tölti be ezt a szerepet, a fényerő utólagos, szoftveres eltolás).
+        // FÉNYERŐ csúszka — CSAK befagyasztott képnél jelenik meg
         if (isFrozen) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -721,7 +602,6 @@ fun TuneTabContent(
                     tint = themeColor,
                     modifier = Modifier.size(18.dp)
                 )
-                // Folytonos csúszka -80..+80 tartományban (nincs steps).
                 Slider(
                     value = brightness,
                     onValueChange = { onBrightnessChange(it) },
@@ -733,22 +613,10 @@ fun TuneTabContent(
                     ),
                     modifier = Modifier.weight(1f)
                 )
-                // Előjeles kiírás (%+d): pl. "+15" vagy "-30", hogy az irány is látszódjon.
-                /*
-                Text(
-                    text = String.format("%+d", brightness.roundToInt()),
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.widthIn(min = 55.dp),
-                    textAlign = TextAlign.End
-                )
-                */
             }
         }
 
-        // ÉLESÍTÉS (sharpen) csúszka — csak megállított kép (isFrozen = true) esetén érhető el.
-        // A háromszög ikon belső része átlátszó (csak a körvonala témaszínű), amit egyedi Canvas-szel rajzolunk meg.
+        // ÉLESÍTÉS csúszka — csak megállított kép (isFrozen = true) esetén érhető el.
         if (isFrozen) {
             Spacer(modifier = Modifier.height(2.dp))
             Row(
@@ -775,9 +643,6 @@ fun TuneTabContent(
                         )
                     )
                 }
-                // Élesítés csúszka: folyamatosan frissítjük a kijelzett értéket (onValueChange),
-                // de a drága képfeldolgozást csak az elengedéskor (onValueChangeFinished)
-                // indítjuk el, hogy ne fagyjon be a UI húzás közben.
                 var draggingValue by remember(sharpenStrength) { mutableFloatStateOf(sharpenStrength) }
 
                 Slider(

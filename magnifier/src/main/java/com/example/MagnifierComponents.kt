@@ -627,8 +627,7 @@ fun ControlTabBar(
         // az strings.xml-ből tölti a feliratokat, így fordíthatóak maradnak.
         val tabs = listOf(
             Pair(Icons.Default.ZoomIn, stringResource(R.string.tab_zoom)),
-            Pair(Icons.Default.ColorLens, stringResource(R.string.tab_filters)),
-            Pair(Icons.Default.Tune, stringResource(R.string.tab_tune)),
+            Pair(Icons.Default.Tune, stringResource(R.string.tab_filters_tune)),
             Pair(Icons.Default.Settings, stringResource(R.string.tab_settings))
         )
 

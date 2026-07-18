@@ -593,7 +593,7 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
     }
 
     // --- UI-overlay / státusz állapotok ---
-    var activeTab by rememberSaveable { mutableStateOf(0) } // 0: Nagyítás, 1: Szűrők, 2: Képkorrekció
+    var activeTab by rememberSaveable { mutableStateOf(0) } // 0: Nagyítás, 1: Szűrők és Korrekció, 2: Beállítások
     // Az egyedi (Compose-rajzolt) "toast" értesítés ikonja/alikonja/színe és láthatósága.
     // Nem a rendszeres Android Toast, hanem saját animált kártya (lásd UI szekció legvégén).
     var toastIcon by remember { mutableStateOf<androidx.compose.ui.graphics.vector.ImageVector>(Icons.Default.CheckCircle) }
@@ -1236,15 +1236,11 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                                 presets = presets,
                                 onApplyTotalZoom = { target, resetPan -> applyTotalZoom(target, resetPan) }
                             )
-                            1 -> FiltersTabContent(
+                            1 -> FiltersAndTuneTabContent(
                                 appVersion = appVersion,
                                 themeColor = themeColor,
                                 filterMode = filterMode,
-                                onFilterModeChange = { filterMode = it }
-                            )
-                            2 -> TuneTabContent(
-                                appVersion = appVersion,
-                                themeColor = themeColor,
+                                onFilterModeChange = { filterMode = it },
                                 isFrozen = isFrozen,
                                 contrast = contrast,
                                 onContrastChange = { contrast = it },
@@ -1257,7 +1253,7 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                                 sharpenStrength = sharpenStrength,
                                 onSharpenStrengthChange = { sharpenStrength = it }
                             )
-                            3 -> SettingsTabContent(
+                            2 -> SettingsTabContent(
                                 appVersion = appVersion,
                                 themeColor = themeColor,
                                 themeOptions = themeOptions,
