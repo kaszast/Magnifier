@@ -294,6 +294,26 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
         mutableStateOf(false)
     }
 
+    var currentLanguage by remember {
+        mutableStateOf(prefs.getString("app_lang", "hu") ?: "hu")
+    }
+
+    // Nyelvváltó segédfüggvény, ami elmenti a választást és újraindítja az Activity-t
+    val onChangeLanguage: (String) -> Unit = remember {
+        { langCode ->
+            prefs.edit().putString("app_lang", langCode).apply()
+            currentLanguage = langCode
+            var ctx = context
+            while (ctx is android.content.ContextWrapper) {
+                if (ctx is android.app.Activity) {
+                    ctx.recreate()
+                    break
+                }
+                ctx = ctx.baseContext
+            }
+        }
+    }
+
     // Automatikus értékelés kérése bizonyos számú indítás után
     LaunchedEffect(Unit) {
         val rateNever = prefs.getBoolean("rate_never", false)
@@ -372,8 +392,10 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
             AppThemeColor(R.string.theme_orange, Color(0xFFFF6B00))
         )
     }
-    // A kiválasztott téma indexe felhasználói beállítás → rememberSaveable (túléli a forgatást).
-    var currentThemeIndex by rememberSaveable { mutableStateOf(0) }
+    // A kiválasztott téma indexe felhasználói beállítás → SharedPreferences-ből betöltve
+    var currentThemeIndex by rememberSaveable {
+        mutableStateOf(prefs.getInt("theme_index", 0))
+    }
     // Származtatott (derived) érték: az aktuális témaszín. Nem külön állapot, csak az indexből
     // olvasott érték — minden recompositionkor újraszámolódik, ami itt triviálisan olcsó.
     val themeColor = themeOptions[currentThemeIndex].color
@@ -1240,7 +1262,10 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                                 themeColor = themeColor,
                                 themeOptions = themeOptions,
                                 currentThemeIndex = currentThemeIndex,
-                                onThemeIndexChange = { index -> currentThemeIndex = index },
+                                onThemeIndexChange = { index ->
+                                    currentThemeIndex = index
+                                    prefs.edit().putInt("theme_index", index).apply()
+                                },
                                 onRateApp = {
                                     val packageName = context.packageName
                                     val intent = Intent(Intent.ACTION_VIEW).apply {
@@ -1258,7 +1283,9 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                                 },
                                 onShowTutorial = {
                                     showWalkthrough = true
-                                }
+                                },
+                                currentLanguage = currentLanguage,
+                                onChangeLanguage = onChangeLanguage
                             )
                         }
                     }

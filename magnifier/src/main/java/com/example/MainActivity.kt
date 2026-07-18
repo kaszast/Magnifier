@@ -132,6 +132,18 @@ import kotlin.math.roundToInt
  * ami a Compose-hoz és a modern jetpack-komponensekhez kell.
  */
 class MainActivity : ComponentActivity() {
+
+    override fun attachBaseContext(newBase: Context) {
+        val prefs = newBase.getSharedPreferences("magnifier_prefs", Context.MODE_PRIVATE)
+        val lang = prefs.getString("app_lang", "hu") ?: "hu"
+        val locale = java.util.Locale.forLanguageTag(lang)
+        java.util.Locale.setDefault(locale)
+        val config = newBase.resources.configuration
+        config.setLocale(locale)
+        val context = newBase.createConfigurationContext(config)
+        super.attachBaseContext(context)
+    }
+
     /**
      * Az onCreate() az Activity életciklusának ELSŐ metódusa: a rendszer akkor
      * hívja meg, amikor létrehozza a képernyőt. Ide tesszük az egyszeri

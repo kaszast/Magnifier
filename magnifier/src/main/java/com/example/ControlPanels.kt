@@ -24,6 +24,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -786,7 +788,9 @@ fun SettingsTabContent(
     currentThemeIndex: Int,
     onThemeIndexChange: (Int) -> Unit,
     onRateApp: () -> Unit,
-    onShowTutorial: () -> Unit
+    onShowTutorial: () -> Unit,
+    currentLanguage: String,
+    onChangeLanguage: (String) -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -868,7 +872,7 @@ fun SettingsTabContent(
 
         Spacer(modifier = Modifier.height(2.dp))
 
-        // Értékelés és Súgó gombok
+        // Értékelés, Nyelvválasztó és Súgó gombok
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -889,6 +893,48 @@ fun SettingsTabContent(
                     tint = themeColor,
                     modifier = Modifier.size(20.dp)
                 )
+            }
+
+            // Nyelvválasztó gomb (a kért zászló ikonnal a rate és help között)
+            var isMenuExpanded by remember { mutableStateOf(false) }
+            val flagEmoji = if (currentLanguage == "hu") "🇭🇺" else "🇬🇧"
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(44.dp)
+                    .background(Color(0xFF1F1E26), RoundedCornerShape(12.dp))
+                    .border(1.dp, Color(0xFF2E2C33), RoundedCornerShape(12.dp))
+                    .clickable { isMenuExpanded = true },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = flagEmoji,
+                    fontSize = 20.sp
+                )
+
+                DropdownMenu(
+                    expanded = isMenuExpanded,
+                    onDismissRequest = { isMenuExpanded = false },
+                    modifier = Modifier
+                        .background(Color(0xFF1F1E26))
+                        .border(1.dp, Color(0xFF2E2C33), RoundedCornerShape(8.dp))
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("🇭🇺 Magyar", color = Color.White, fontSize = 14.sp) },
+                        onClick = {
+                            isMenuExpanded = false
+                            onChangeLanguage("hu")
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("🇬🇧 English", color = Color.White, fontSize = 14.sp) },
+                        onClick = {
+                            isMenuExpanded = false
+                            onChangeLanguage("en")
+                        }
+                    )
+                }
             }
 
             // Súgó gomb
