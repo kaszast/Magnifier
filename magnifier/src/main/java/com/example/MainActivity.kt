@@ -138,7 +138,7 @@ class MainActivity : ComponentActivity() {
         val lang = prefs.getString("app_lang", "hu") ?: "hu"
         val locale = java.util.Locale.forLanguageTag(lang)
         java.util.Locale.setDefault(locale)
-        val config = newBase.resources.configuration
+        val config = android.content.res.Configuration(newBase.resources.configuration)
         config.setLocale(locale)
         val context = newBase.createConfigurationContext(config)
         super.attachBaseContext(context)

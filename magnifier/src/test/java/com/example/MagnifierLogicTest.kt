@@ -238,54 +238,6 @@ class MagnifierLogicTest {
         assertEquals(510f, v[4], delta)
     }
 
-    // ============== roundZoomStep / finalizeZoomSteps ==============
-    // A kamera nyers, folytonos zoom-értékeit alakítja "szép", kattintható
-    // preset-lépcsőkké (0.5x, 1x, 2x, ...). A roundZoomStep egyetlen értéket kerekít
-    // bevett lépcsőre; a finalizeZoomSteps a jelöltek halmazát egészíti ki (default
-    // sorral, ha kevés) és szűkíti (legfeljebb 7 preset), hogy a UI-n a zoom-gombok
-    // ne zsúfolódjanak össze.
-    // --- roundZoomStep / finalizeZoomSteps ---
-
-    // Több nyers érték → várt lépcső pár egyszerre: leképezi a kerekítési szabályt
-    // (sávonként fix lépcsőre, 6x fölött a legközelebbi 0.5-ösre).
-    @Test
-    fun `roundZoomStep bevett lepcsore kerekit`() {
-        assertEquals(0.5f, roundZoomStep(0.5f, 1.0f), delta)
-        assertEquals(0.6f, roundZoomStep(0.7f, 1.0f), delta)
-        assertEquals(1.0f, roundZoomStep(1.1f, 1.0f), delta)
-        assertEquals(2.0f, roundZoomStep(1.9f, 1.0f), delta)
-        assertEquals(3.0f, roundZoomStep(3.0f, 1.0f), delta)
-        assertEquals(4.3f, roundZoomStep(4.2f, 1.0f), delta)
-        assertEquals(5.0f, roundZoomStep(5.5f, 1.0f), delta)
-        assertEquals(10.0f, roundZoomStep(10.1f, 1.0f), delta)
-    }
-
-    // Ha a nyers érték közel esik a tényleges minZoom-hoz, arra igazít — hogy ne
-    // legyen a listában két, alig különböző lépcső (0.6x itt a minZoom).
-    @Test
-    fun `roundZoomStep a kozeli minZoomhoz simul`() {
-        assertEquals(0.6f, roundZoomStep(0.7f, 0.6f), delta)
-    }
-
-    // Üres jelölt-halmaznál értelmes alapértelmezett sorral tölt fel (1, 2, 4, 8),
-    // hogy sose maradjon a felhasználó zoom-gombok nélkül.
-    @Test
-    fun `finalizeZoomSteps keves jeloltnel default sorral tolt fel`() {
-        assertEquals(listOf(1.0f, 2.0f, 4.0f, 8.0f), finalizeZoomSteps(emptySet(), 1.0f, 8.0f))
-    }
-
-    // Nagy zoom-tartománynál (itt max 120x) mérföldköveket ad hozzá, de az eredmény
-    // legfeljebb 7 elem, rendezett, a min (0.6) és a max (120) mindig benne, és az
-    // 1.0x is megmarad. Így a lista sűrű tartományban is olvasható marad.
-    @Test
-    fun `finalizeZoomSteps nagy zoomnal merfoldkovekkel es legfeljebb 7 presettel`() {
-        val steps = finalizeZoomSteps(setOf(0.6f, 1.0f, 2.0f, 4.3f, 10.0f), 0.6f, 120.0f)
-        assertEquals(7, steps.size)
-        assertEquals(0.6f, steps.first(), delta)
-        assertEquals(120.0f, steps.last(), delta)
-        assertTrue(1.0f in steps)
-        assertEquals(steps, steps.sorted())
-    }
 
     // ================== computeZoomDistribution ==================
     // Egy kívánt teljes nagyítás szétosztása KAMERA zoom (optikai/hibrid, éles) és

@@ -306,7 +306,12 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
             var ctx = context
             while (ctx is android.content.ContextWrapper) {
                 if (ctx is android.app.Activity) {
-                    ctx.recreate()
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                        val localeManager = ctx.getSystemService(android.app.LocaleManager::class.java)
+                        localeManager.applicationLocales = android.os.LocaleList.forLanguageTags(langCode)
+                    } else {
+                        ctx.recreate()
+                    }
                     break
                 }
                 ctx = ctx.baseContext
