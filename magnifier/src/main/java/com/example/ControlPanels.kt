@@ -159,7 +159,7 @@ import kotlin.math.roundToInt
  * élő kameránál a `liveZoomRatio * extraDigitalZoom` szorzat.
  *
  * Paraméterek (mind hoistolt — az állapotot a szülő tartja, lásd a fájl fejlécét):
- *  @param appVersion         a kiírt verziószám (pl. "1.2.3")
+
  *  @param themeColor         aktuális akcentusszín (ikonok, csúszka, kijelölés)
  *  @param isFrozen           igaz, ha a kép be van fagyasztva (állókép); ilyenkor
  *                            a zoom a rögzített képre nagyít, nem a kamerára
@@ -171,7 +171,6 @@ import kotlin.math.roundToInt
  *                            (efölött már digitális tartományban vagyunk)
  *  @param sliderMin          a csúszka minimuma
  *  @param sliderMax          a csúszka maximuma
- *  @param presets            a felkínált gyors-zoom értékek listája
  *  @param onApplyTotalZoom   (target, resetPan) -> Unit: állítsd a TELJES zoomot
  *                            a `target` célértékre; a szülő szétosztja hardveres
  *                            és digitális részre. Ha resetPan=true, a pásztázás
