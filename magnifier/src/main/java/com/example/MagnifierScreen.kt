@@ -323,18 +323,7 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
         }
     }
 
-    // Az app verziónevének kiolvasása a package-infóból, egyszeri számítással.
-    // A remember { } gondoskodik róla, hogy ez a (viszonylag drága) lekérdezés NE fusson
-    // le minden recompositionkor, csak egyszer, az első komponáláskor. A ?: "elvis"-operátor
-    // a null esetére ad tartalék értéket; a catch a ritka hibát nyeli el ugyanazzal a fallbackkel.
-    val appVersion = remember {
-        try {
-            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            pInfo.versionName ?: "27.0"
-        } catch (e: Exception) {
-            "27.0"
-        }
-    }
+
     // A lifecycleOwner (jellemzően az Activity) kell a kamera bindToLifecycle-jéhez és az
     // observerek regisztrálásához: a CameraX ehhez igazítja, mikor induljon/álljon le a kamera.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -463,24 +452,7 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
         derivedStateOf { if (isFrozen) 0.5f else minZoom }
     }
     val sliderMax = 64.0f // a slider felső korlátja (a teljes: optikai + digitális zoom)
-    // A gyors-zoom "preset" gombok értékei (pl. 1x, 2x, 4x...). Kezdetben egy ésszerű default lista,
-    // amit a lenti LaunchedEffect a mód és a kamera-tartomány szerint felülír.
-    var presets by remember { mutableStateOf(listOf(1.0f, 2.0f, 4.0f, 8.0f, 16.0f, 32.0f, 64.0f)) }
-    // Preset-lista frissítése, amikor a mód vagy a zoom-tartomány változik (a kulcsokról lásd az
-    // EFFEKTEK szekciót). Fagyasztott módban fix lista (0.5x-től); élőben a getOpticalSteps a
-    // konkrét kamera optikai lencséihez igazított lépcsőket ad. A getOpticalSteps CameraManager-t
-    // kérdez (lassabb, I/O-jellegű), ezért withContext(Dispatchers.IO)-val háttérszálra tesszük,
-    // hogy ne akassza meg a fő (UI) szálat.
-    LaunchedEffect(isFrozen, minZoom, maxZoom) {
-        if (isFrozen) {
-            presets = listOf(0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f, 32.0f, 64.0f)
-        } else {
-            val steps = withContext(Dispatchers.IO) {
-                getOpticalSteps(context, minZoom, sliderMax)
-            }
-            presets = steps
-        }
-    }
+
 
     // Az összes élő zoom-vezérlő (pinch, dupla koppintás, −/+ gomb, slider, presetek) közös
     // belépési pontja: a cél teljes nagyítást elosztja kamera- és digitális zoomra.
@@ -1218,7 +1190,7 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                     ) {
                         when (activeTab) {
                             0 -> CombinedZoomFiltersTuneTabContent(
-                                appVersion = appVersion,
+
                                 themeColor = themeColor,
                                 isFrozen = isFrozen,
                                 frozenScale = frozenScale,
@@ -1228,7 +1200,7 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                                 maxZoom = maxZoom,
                                 sliderMin = sliderMin,
                                 sliderMax = sliderMax,
-                                presets = presets,
+
                                 onApplyTotalZoom = { target, resetPan -> applyTotalZoom(target, resetPan) },
                                 filterMode = filterMode,
                                 onFilterModeChange = { filterMode = it },
@@ -1244,7 +1216,7 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                                 onSharpenStrengthChange = { sharpenStrength = it }
                             )
                             1 -> SettingsTabContent(
-                                appVersion = appVersion,
+
                                 themeColor = themeColor,
                                 themeOptions = themeOptions,
                                 currentThemeIndex = currentThemeIndex,

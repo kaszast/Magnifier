@@ -180,7 +180,7 @@ import kotlin.math.roundToInt
  */
 @Composable
 fun ZoomTabContent(
-    appVersion: String,
+
     themeColor: Color,
     isFrozen: Boolean,
     frozenScale: Float,
@@ -190,7 +190,6 @@ fun ZoomTabContent(
     maxZoom: Float,
     sliderMin: Float,
     sliderMax: Float,
-    presets: List<Float>,
     onApplyTotalZoom: (Float, Boolean) -> Unit,
 ) {
     // A fül tartalma egy függőleges oszlop, amely a teljes szélességet kitölti
@@ -220,20 +219,10 @@ fun ZoomTabContent(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                // Icon: vektoros piktogram. Az imageVector a rajz, a tint a
-                // színezés, a contentDescription pedig a képernyőolvasónak
-                // (akadálymentesítés) szóló szöveg — erőforrásból, lokalizálva.
-                Icon(
-                    imageVector = Icons.Default.ZoomIn,
-                    contentDescription = stringResource(R.string.tab_zoom),
-                    tint = themeColor,
-                    modifier = Modifier.size(18.dp)
-                )
-                // Text: egyszerű feliratkomponens. Itt a verziószám kis, félkövér.
                 Text(
-                    text = "v$appVersion",
+                    text = stringResource(R.string.app_name),
                     color = themeColor,
-                    fontSize = 11.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
                 // Csak digitális tartományban jelenik meg: halvány lila hátterű,
@@ -355,87 +344,13 @@ fun ZoomTabContent(
             )
         }
 
-        // Gyors preset-ek — NEM görgethető, hanem RESZPONZÍVAN annyi fér ki,
-        // amennyi. Ehhez BoxWithConstraints kell: ez a Box tudja megmondani a
-        // benti kódnak a rendelkezésre álló szélességet (maxWidth), amiből
-        // kiszámoljuk, hány gomb fér el, és csak annyit rajzolunk ki.
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val availableWidth = maxWidth
-            val itemWidth = 52.dp
-            val spacing = 6.dp
-            // Hány gomb fér ki hiánytalanul? A képlet a
-            //   k * itemWidth + (k - 1) * spacing <= availableWidth
-            // egyenlőtlenség átrendezése egész osztással; coerceAtLeast(1) miatt
-            // legalább egy gomb mindig látszik.
-            val maxFit = ((availableWidth + spacing) / (itemWidth + spacing)).toInt().coerceAtLeast(1)
-            // Csak az első `maxFit` preset-et vesszük — a többi egyszerűen kimarad.
-            val visiblePresets = presets.take(maxFit)
 
-            // A látható preset-ek egy sorban, a szélek közt egyenletesen elosztva.
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                visiblePresets.forEach { preset ->
-                    // Ki van-e éppen választva ez a preset? Nem szigorú egyenlőség,
-                    // hanem 0.15x tűréssel: ha az aktuális nagyítás elég közel van a
-                    // preset értékéhez, kiemeltnek (selected) számít.
-                    val isSelected = if (isFrozen) {
-                        abs(frozenScale - preset) < 0.15f
-                    } else {
-                        abs((liveZoomRatio * extraDigitalZoom) - preset) < 0.15f
-                    }
-
-                    // Élő módban csak azok a preset-ek elérhetők, amelyek beleférnek a
-                    // csúszka max-ába; a nem lehetségeseket egyszerűen ki sem rajzoljuk.
-                    val isPresetPossible = isFrozen || preset <= sliderMax
-                    if (isPresetPossible) {
-                        // Egy preset-gomb. A KIVÁLASZTOTT állapot vizuális jelzése a
-                        // színcsere: ha isSelected, a háttér és a keret a themeColor
-                        // (kiemelt), különben sötét háttér + halvány keret.
-                        // Kattintáskor preset-re ugrik: befagyasztva a frozenScale-t
-                        // állítja, élőben az onApplyTotalZoom(preset, true) — a true
-                        // itt azt jelenti, a pásztázás (pan) is nullázódjon.
-                        Box(
-                            modifier = Modifier
-                                .width(itemWidth)
-                                .heightIn(min = 40.dp)
-                                .background(
-                                    if (isSelected) themeColor else Color(0xFF1B1A21),
-                                    RoundedCornerShape(12.dp)
-                                )
-                                .border(1.dp, if (isSelected) themeColor else Color(0xFF2E2C33), RoundedCornerShape(12.dp))
-                                .clickable {
-                                    if (isFrozen) {
-                                        onFrozenScaleChange(preset)
-                                    } else {
-                                        onApplyTotalZoom(preset, true)
-                                    }
-                                }
-                                .padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                         ) {
-                            // Felirat: egész értéknél "2x", törtnél "2.5x". A szöveg
-                            // színe kiemelt gombon fekete (a világos háttéren olvasható),
-                            // különben fehér.
-                            Text(
-                                text = if (preset % 1.0f == 0.0f) String.format("%.0fx", preset) else String.format("%.1fx", preset),
-                                color = if (isSelected) Color.Black else Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
 @Composable
 fun FiltersAndTuneTabContent(
-    appVersion: String,
+
     themeColor: Color,
     filterMode: FilterMode,
     onFilterModeChange: (FilterMode) -> Unit,
@@ -465,16 +380,10 @@ fun FiltersAndTuneTabContent(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Tune,
-                    contentDescription = stringResource(R.string.tab_filters_tune),
-                    tint = themeColor,
-                    modifier = Modifier.size(16.dp)
-                )
                 Text(
-                    text = "v$appVersion",
+                    text = stringResource(R.string.app_name),
                     color = themeColor,
-                    fontSize = 11.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -582,7 +491,7 @@ fun FiltersAndTuneTabContent(
                     }
                 },
                 valueRange = if (isFrozen) 1.0f..3.0f else minExposureIndex.toFloat()..maxExposureIndex.toFloat(),
-                steps = if (!isFrozen && (maxExposureIndex - minExposureIndex > 0)) maxExposureIndex - minExposureIndex - 1 else 0,
+
                 colors = SliderDefaults.colors(
                     activeTrackColor = themeColor,
                     thumbColor = themeColor,
@@ -669,7 +578,7 @@ fun FiltersAndTuneTabContent(
 
 @Composable
 fun SettingsTabContent(
-    appVersion: String,
+
     themeColor: Color,
     themeOptions: List<AppThemeColor>,
     currentThemeIndex: Int,
@@ -690,16 +599,10 @@ fun SettingsTabContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.Settings,
-                contentDescription = stringResource(R.string.tab_settings),
-                tint = themeColor,
-                modifier = Modifier.size(16.dp)
-            )
             Text(
-                text = "v$appVersion",
+                text = stringResource(R.string.app_name),
                 color = themeColor,
-                fontSize = 11.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -855,7 +758,7 @@ fun SettingsTabContent(
 
 @Composable
 fun CombinedZoomFiltersTuneTabContent(
-    appVersion: String,
+
     themeColor: Color,
     isFrozen: Boolean,
     frozenScale: Float,
@@ -865,7 +768,6 @@ fun CombinedZoomFiltersTuneTabContent(
     maxZoom: Float,
     sliderMin: Float,
     sliderMax: Float,
-    presets: List<Float>,
     onApplyTotalZoom: (Float, Boolean) -> Unit,
     filterMode: FilterMode,
     onFilterModeChange: (FilterMode) -> Unit,
@@ -933,49 +835,7 @@ fun CombinedZoomFiltersTuneTabContent(
                 )
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
 
-            // Jobb oldal: 4 gyors-zoom preset (1x, 2x, 4x, 8x) (méret: 26x40.dp)
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val compactPresets = listOf(1.0f, 2.0f, 4.0f, 8.0f)
-                compactPresets.forEach { preset ->
-                    val isSelected = if (isFrozen) {
-                        abs(frozenScale - preset) < 0.15f
-                    } else {
-                        abs((liveZoomRatio * extraDigitalZoom) - preset) < 0.15f
-                    }
-                    val isPresetPossible = isFrozen || preset <= sliderMax
-                    if (isPresetPossible) {
-                        Box(
-                            modifier = Modifier
-                                .size(width = 26.dp, height = 40.dp)
-                                .background(
-                                    if (isSelected) themeColor else Color(0xFF1B1A21),
-                                    RoundedCornerShape(10.dp)
-                                )
-                                .border(1.dp, if (isSelected) themeColor else Color(0xFF2E2C33), RoundedCornerShape(10.dp))
-                                .clickable {
-                                    if (isFrozen) {
-                                        onFrozenScaleChange(preset)
-                                    } else {
-                                        onApplyTotalZoom(preset, true)
-                                    }
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = String.format("%.0fx", preset),
-                                color = if (isSelected) Color.Black else Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-            }
         }
 
         // 2. Szűrők (Balra, fix szélesség) és Expozíció/Kontraszt (Jobbra, weight=1f) side-by-side (magasság: 40.dp)
@@ -1083,7 +943,7 @@ fun CombinedZoomFiltersTuneTabContent(
                         }
                     },
                     valueRange = if (isFrozen) 1.0f..3.0f else minExposureIndex.toFloat()..maxExposureIndex.toFloat(),
-                    steps = if (!isFrozen && (maxExposureIndex - minExposureIndex > 0)) maxExposureIndex - minExposureIndex - 1 else 0,
+
                     colors = SliderDefaults.colors(
                         activeTrackColor = themeColor,
                         thumbColor = themeColor,
@@ -1152,7 +1012,7 @@ fun CombinedZoomFiltersTuneTabContent(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Canvas(
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(18.dp)
                 ) {
                     val path = Path().apply {
                         moveTo(size.width / 2f, 0f)
@@ -1207,7 +1067,7 @@ fun CombinedZoomFiltersTuneTabContent(
 fun CombinedZoomFiltersTuneTabContentPreviewLive() {
     Box(modifier = Modifier.padding(16.dp)) {
         CombinedZoomFiltersTuneTabContent(
-            appVersion = "1.0.0",
+
             themeColor = Color(0xFF8B5CF6),
             isFrozen = false,
             frozenScale = 1.0f,
@@ -1217,7 +1077,7 @@ fun CombinedZoomFiltersTuneTabContentPreviewLive() {
             maxZoom = 8.0f,
             sliderMin = 1.0f,
             sliderMax = 8.0f,
-            presets = listOf(1.0f, 2.0f, 4.0f, 8.0f),
+
             onApplyTotalZoom = { _, _ -> },
             contrast = 1.0f,
             onContrastChange = {},
@@ -1240,7 +1100,7 @@ fun CombinedZoomFiltersTuneTabContentPreviewLive() {
 fun CombinedZoomFiltersTuneTabContentPreviewFrozen() {
     Box(modifier = Modifier.padding(16.dp)) {
         CombinedZoomFiltersTuneTabContent(
-            appVersion = "1.0.0",
+
             themeColor = Color(0xFF8B5CF6),
             isFrozen = true,
             frozenScale = 2.0f,
@@ -1250,7 +1110,7 @@ fun CombinedZoomFiltersTuneTabContentPreviewFrozen() {
             maxZoom = 8.0f,
             sliderMin = 1.0f,
             sliderMax = 8.0f,
-            presets = listOf(1.0f, 2.0f, 4.0f, 8.0f),
+
             onApplyTotalZoom = { _, _ -> },
             contrast = 1.5f,
             onContrastChange = {},
@@ -1273,7 +1133,7 @@ fun CombinedZoomFiltersTuneTabContentPreviewFrozen() {
 fun SettingsTabContentPreview() {
     Box(modifier = Modifier.padding(16.dp)) {
         SettingsTabContent(
-            appVersion = "1.0.0",
+
             themeColor = Color(0xFF8B5CF6),
             themeOptions = listOf(
                 AppThemeColor(R.string.theme_purple, Color(0xFFB180FF)),
