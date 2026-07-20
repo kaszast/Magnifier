@@ -59,6 +59,36 @@ fun WalkthroughOverlay(
             bodyRes = R.string.walkthrough_body_3,
             icon = Icons.Default.Pause,
             iconColor = Color(0xFFEF4444)
+        ),
+        WalkthroughStep(
+            titleRes = R.string.walkthrough_title_4,
+            bodyRes = R.string.walkthrough_body_4,
+            icon = Icons.Default.TextSnippet,
+            iconColor = themeColor
+        ),
+        WalkthroughStep(
+            titleRes = R.string.walkthrough_title_5,
+            bodyRes = R.string.walkthrough_body_5,
+            icon = Icons.Default.FilterCenterFocus,
+            iconColor = themeColor
+        ),
+        WalkthroughStep(
+            titleRes = R.string.walkthrough_title_6,
+            bodyRes = R.string.walkthrough_body_6,
+            icon = Icons.Default.Info,
+            iconColor = themeColor
+        ),
+        WalkthroughStep(
+            titleRes = R.string.walkthrough_title_7,
+            bodyRes = R.string.walkthrough_body_7,
+            icon = Icons.Default.Tune,
+            iconColor = themeColor
+        ),
+        WalkthroughStep(
+            titleRes = R.string.walkthrough_title_8,
+            bodyRes = R.string.walkthrough_body_8,
+            icon = Icons.Default.Settings,
+            iconColor = themeColor
         )
     )
 

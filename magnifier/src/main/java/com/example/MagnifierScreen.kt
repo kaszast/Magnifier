@@ -622,6 +622,24 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
     LaunchedEffect(focusMode, manualFocusDistance, camera) {
         val cam = camera ?: return@LaunchedEffect
         applyFocusSettings(cam, focusMode, manualFocusDistance)
+        if (focusMode == "locked") {
+            val factory = androidx.camera.core.SurfaceOrientedMeteringPointFactory(1f, 1f)
+            val point = factory.createPoint(0.5f, 0.5f)
+            val action = androidx.camera.core.FocusMeteringAction.Builder(point, androidx.camera.core.FocusMeteringAction.FLAG_AF)
+                .disableAutoCancel()
+                .build()
+            try {
+                cam.cameraControl.startFocusAndMetering(action)
+            } catch (e: Exception) {
+                android.util.Log.e("Magnifier", "Failed to start focus lock trigger", e)
+            }
+        } else if (focusMode == "auto") {
+            try {
+                cam.cameraControl.cancelFocusAndMetering()
+            } catch (e: Exception) {
+                android.util.Log.e("Magnifier", "Failed to cancel focus lock", e)
+            }
+        }
     }
 
     androidx.compose.runtime.DisposableEffect(Unit) {
@@ -1045,8 +1063,18 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                         //   - update : recompositionkor fut; ide kötjük a Preview use case-t a View Surface-ére.
                         AndroidView(
                             factory = { previewView },
-                            update = {
-                                previewUseCase?.setSurfaceProvider(previewView.surfaceProvider)
+                            update = { view ->
+                                previewUseCase?.setSurfaceProvider(view.surfaceProvider)
+                                if (filterMode == FilterMode.NORMAL) {
+                                    view.setLayerType(android.view.View.LAYER_TYPE_NONE, null)
+                                } else {
+                                    val matrixValues = buildFilterMatrixValues(filterMode, 1.0f, 0.0f)
+                                    val matrix = android.graphics.ColorMatrix(matrixValues)
+                                    val paint = android.graphics.Paint().apply {
+                                        colorFilter = android.graphics.ColorMatrixColorFilter(matrix)
+                                    }
+                                    view.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, paint)
+                                }
                             },
                             // graphicsLayer: a preview SZOFTVERES (digitális) nagyítása/eltolása. A GPU
                             // egyszerűen skálázza/tolja a már megrajzolt réteget — ez a kamera optikai
@@ -1079,53 +1107,6 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                                         translationY = extraDigitalPan.y
                                     }
                             )
-                        }
-
-                        // ÉLŐ SZŰRŐK Canvas blend-móddal (lásd a WYSIWYG-magyarázatot fentebb). A natív
-                        // previewre nem tehető ColorFilter, ezért egy áttetsző Canvas-réteget rajzolunk RÁ,
-                        // és a blendMode dönti el, hogyan keveredik a mögötte lévő képpel. Ezek matematikailag
-                        // megegyeznek a buildFilterMatrixValues color matrix-ával (ImageProcessing.kt).
-                        if (filterMode == FilterMode.INVERTED) {
-                            // Difference fehérrel: out = |white - src| = 255 - src → színinvertálás (negatív kép).
-                            Canvas(modifier = Modifier.fillMaxSize()) {
-                                drawRect(
-                                    color = Color.White,
-                                    blendMode = androidx.compose.ui.graphics.BlendMode.Difference
-                                )
-                            }
-                        } else if (filterMode == FilterMode.MONOCHROME) {
-                            // Color blend szürkével: átveszi a szürke telítettségét (0) → deszaturálás (fekete-fehér).
-                            Canvas(modifier = Modifier.fillMaxSize()) {
-                                drawRect(
-                                    color = Color.Gray,
-                                    blendMode = androidx.compose.ui.graphics.BlendMode.Color
-                                )
-                            }
-                        } else if (filterMode == FilterMode.YELLOW) {
-                            // Deszaturálás + sárga modulálás: luma → (l, l, 0), megegyezik a
-                            // mentésnél használt color matrix-szal (WYSIWYG)
-                            Canvas(modifier = Modifier.fillMaxSize()) {
-                                drawRect(
-                                    color = Color.Gray,
-                                    blendMode = androidx.compose.ui.graphics.BlendMode.Color
-                                )
-                                drawRect(
-                                    color = Color.Yellow,
-                                    blendMode = androidx.compose.ui.graphics.BlendMode.Modulate
-                                )
-                            }
-                        } else if (filterMode == FilterMode.RED) {
-                            // Deszaturálás + vörös modulálás: luma → (l, 0, 0)
-                            Canvas(modifier = Modifier.fillMaxSize()) {
-                                drawRect(
-                                    color = Color.Gray,
-                                    blendMode = androidx.compose.ui.graphics.BlendMode.Color
-                                )
-                                drawRect(
-                                    color = Color.Red,
-                                    blendMode = androidx.compose.ui.graphics.BlendMode.Modulate
-                                )
-                            }
                         }
 
                         // ÉRINTÉS-ELKAPÓ ÁTTETSZŐ RÉTEG a preview és a Canvas-ek FÖLÖTT. Azért kell külön,
@@ -1296,7 +1277,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(screenHeight * 0.40f)
+                        .height(screenHeight * 0.46f)
                         .padding(horizontal = 16.dp)
                         .padding(bottom = innerPadding.calculateBottomPadding() + 16.dp)
                         .background(Color(0xE60D0C11), RoundedCornerShape(28.dp))
@@ -1737,7 +1718,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .heightIn(max = 200.dp)
+                                    .heightIn(max = 300.dp)
                                     .background(Color(0xFF111115), RoundedCornerShape(8.dp))
                                     .border(1.dp, Color(0xFF2E2C33), RoundedCornerShape(8.dp))
                                     .padding(12.dp)

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -50,6 +51,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import kotlin.math.ln
+import kotlin.math.exp
 
 import android.view.LayoutInflater
 import android.widget.ImageView
@@ -462,6 +465,11 @@ fun FiltersAndTuneTabContent(
                                             colors = listOf(Color(0xFF64B5F6), Color.Black)
                                         )
                                     }
+                                    else -> {
+                                        Brush.linearGradient(
+                                            colors = listOf(Color.Gray, Color.Black)
+                                        )
+                                    }
                                 },
                                 shape = CircleShape
                             )
@@ -610,8 +618,8 @@ fun SettingsTabContent(
     onNightEnabledChange: (Boolean) -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
         // Fejléc beállítások ikonnal
         Row(
@@ -629,7 +637,8 @@ fun SettingsTabContent(
 
         // Téma színek rácsa
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(40.dp),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             themeOptions.forEachIndexed { index, option ->
@@ -673,7 +682,8 @@ fun SettingsTabContent(
 
         // Értékelés, Nyelvválasztó és Súgó gombok
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().height(40.dp),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Értékelés gomb
@@ -775,59 +785,60 @@ fun SettingsTabContent(
         }
 
         // Kamera Módok (HDR / Éjszakai képjavítás)
-        if (isHdrSupported || isNightSupported) {
-            androidx.compose.material3.HorizontalDivider(
-                modifier = Modifier.padding(vertical = 4.dp),
-                color = Color(0xFF2E2C33)
-            )
-            Text(
-                text = stringResource(R.string.label_hdr_night),
-                color = themeColor,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
-            )
+        androidx.compose.material3.HorizontalDivider(
+            modifier = Modifier.padding(vertical = 4.dp),
+            color = Color(0xFF2E2C33)
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().height(40.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
-                if (isHdrSupported) {
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(stringResource(R.string.setting_hdr), color = Color.White, fontSize = 13.sp)
-                        androidx.compose.material3.Switch(
-                            checked = isHdrEnabled,
-                            onCheckedChange = onHdrEnabledChange,
-                            colors = androidx.compose.material3.SwitchDefaults.colors(
-                                checkedThumbColor = Color.Black,
-                                checkedTrackColor = themeColor,
-                                uncheckedThumbColor = Color(0xFF5E5C64),
-                                uncheckedTrackColor = Color(0xFF111115)
-                            )
-                        )
-                    }
-                }
-                if (isNightSupported) {
-                    Row(
-                        modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(stringResource(R.string.setting_night), color = Color.White, fontSize = 13.sp)
-                        androidx.compose.material3.Switch(
-                            checked = isNightEnabled,
-                            onCheckedChange = onNightEnabledChange,
-                            colors = androidx.compose.material3.SwitchDefaults.colors(
-                                checkedThumbColor = Color.Black,
-                                checkedTrackColor = themeColor,
-                                uncheckedThumbColor = Color(0xFF5E5C64),
-                                uncheckedTrackColor = Color(0xFF111115)
-                            )
-                        )
-                    }
-                }
+                Icon(
+                    imageVector = Icons.Default.HdrOn,
+                    contentDescription = stringResource(R.string.setting_hdr),
+                    tint = if (isHdrEnabled) themeColor else Color(0xFF5E5C64),
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                androidx.compose.material3.Switch(
+                    checked = isHdrEnabled,
+                    onCheckedChange = onHdrEnabledChange,
+                    colors = androidx.compose.material3.SwitchDefaults.colors(
+                        checkedThumbColor = Color.Black,
+                        checkedTrackColor = themeColor,
+                        uncheckedThumbColor = Color(0xFF5E5C64),
+                        uncheckedTrackColor = Color(0xFF111115)
+                    )
+                )
+            }
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Nightlight,
+                    contentDescription = stringResource(R.string.setting_night),
+                    tint = if (isNightEnabled) themeColor else Color(0xFF5E5C64),
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                androidx.compose.material3.Switch(
+                    checked = isNightEnabled,
+                    onCheckedChange = onNightEnabledChange,
+                    colors = androidx.compose.material3.SwitchDefaults.colors(
+                        checkedThumbColor = Color.Black,
+                        checkedTrackColor = themeColor,
+                        uncheckedThumbColor = Color(0xFF5E5C64),
+                        uncheckedTrackColor = Color(0xFF111115)
+                    )
+                )
             }
         }
     }
@@ -835,7 +846,6 @@ fun SettingsTabContent(
 
 @Composable
 fun CombinedZoomFiltersTuneTabContent(
-
     themeColor: Color,
     isFrozen: Boolean,
     frozenScale: Float,
@@ -865,76 +875,114 @@ fun CombinedZoomFiltersTuneTabContent(
     minFocusDistance: Float
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
         val currentTotalZoom = if (isFrozen) frozenScale else (liveZoomRatio * extraDigitalZoom)
 
-        // 1. Csúszkasor 1: Zoom (Balra, weight=1f) és Gyors Presetek (Jobbra, fix szélesség) side-by-side (magasság: 40.dp)
+        // 1. Sor: Zoom csúszka (logaritmikus, teljes hosszban, Presetek nélkül) (magasság: 40.dp)
         Row(
             modifier = Modifier.fillMaxWidth().height(40.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Bal oldal: Zoom
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ZoomIn,
-                    contentDescription = null,
-                    tint = themeColor,
-                    modifier = Modifier.size(20.dp)
-                )
-                Slider(
-                    value = currentTotalZoom.coerceIn(sliderMin, sliderMax),
-                    onValueChange = { newValue ->
+            Icon(
+                imageVector = Icons.Default.ZoomIn,
+                contentDescription = null,
+                tint = themeColor,
+                modifier = Modifier.size(20.dp)
+            )
+            val sliderMinLog = ln(sliderMin.toDouble()).toFloat()
+            val sliderMaxLog = ln(sliderMax.toDouble()).toFloat()
+            val currentZoomLog = ln(currentTotalZoom.toDouble().coerceIn(sliderMin.toDouble(), sliderMax.toDouble())).toFloat()
+            Slider(
+                value = currentZoomLog,
+                onValueChange = { newValue ->
+                    val actualZoom = exp(newValue.toDouble()).toFloat()
+                    if (isFrozen) {
+                        onFrozenScaleChange(actualZoom)
+                    } else {
+                        onApplyTotalZoom(actualZoom, false)
+                    }
+                },
+                valueRange = sliderMinLog..sliderMaxLog,
+                colors = SliderDefaults.colors(
+                    activeTrackColor = themeColor,
+                    thumbColor = themeColor,
+                    inactiveTrackColor = Color(0xFF1B1A21)
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .testTag("zoom_slider")
+            )
+            // Kattintásra a nagyítás visszaáll az alapértelmezett 1.0x-es értékre
+            Text(
+                text = String.format("%.1fx", currentTotalZoom),
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .widthIn(min = 40.dp)
+                    .clickable {
                         if (isFrozen) {
-                            onFrozenScaleChange(newValue)
+                            onFrozenScaleChange(1.0f)
                         } else {
-                            onApplyTotalZoom(newValue, false)
+                            onApplyTotalZoom(1.0f, true)
                         }
                     },
-                    valueRange = sliderMin..sliderMax,
-                    colors = SliderDefaults.colors(
-                        activeTrackColor = themeColor,
-                        thumbColor = themeColor,
-                        inactiveTrackColor = Color(0xFF1B1A21)
-                    ),
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("zoom_slider")
-                )
-                Text(
-                    text = String.format("%.1fx", currentTotalZoom),
-                    color = Color.White,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.widthIn(min = 40.dp),
-                    textAlign = TextAlign.End
-                )
-            }
-
-
+                textAlign = TextAlign.End
+            )
         }
 
-        // 2. Szűrők (Balra, görgethető) és Expozíció/Kontraszt (Jobbra, weight=1f) side-by-side (magasság: 40.dp)
+        // 2. Sor: Fényerő csúszka (teljes hosszban, de élő kép esetén letiltva) (magasság: 40.dp)
         Row(
             modifier = Modifier.fillMaxWidth().height(40.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Bal oldal: szűrő gombok (méret: 34x40.dp)
-            Row(
+            Icon(
+                imageVector = Icons.Default.LightMode,
+                contentDescription = null,
+                tint = if (isFrozen) themeColor else Color(0xFF5E5C64),
+                modifier = Modifier.size(20.dp)
+            )
+            Slider(
+                value = brightness,
+                onValueChange = { onBrightnessChange(it) },
+                valueRange = -80f..80f,
+                enabled = isFrozen,
+                colors = SliderDefaults.colors(
+                    activeTrackColor = themeColor,
+                    thumbColor = themeColor,
+                    inactiveTrackColor = Color(0xFF1B1A21),
+                    disabledActiveTrackColor = Color(0xFF3E3D45),
+                    disabledThumbColor = Color(0xFF3E3D45),
+                    disabledInactiveTrackColor = Color(0xFF1B1A21)
+                ),
+                modifier = Modifier.weight(1f)
+            )
+            // Kattintásra a fényerő visszaáll az alapértelmezett 0-ra
+            Text(
+                text = String.format("%.0f", brightness),
+                color = if (isFrozen) Color.White else Color(0xFF5E5C64),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier
-                    .weight(1.1f)
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    .widthIn(min = 32.dp)
+                    .clickable(enabled = isFrozen) { onBrightnessChange(0.0f) },
+                textAlign = TextAlign.End
+            )
+        }
+
+        // 3. Sor: Szűrők választósávja (vízszintesen egyenletesen elosztva, 8 szűrőgombbal) (magasság: 40.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth().height(40.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                FilterMode.values().forEach { mode ->
+                FilterMode.entries.forEach { mode ->
                     val selected = filterMode == mode
                     Box(
                         modifier = Modifier
@@ -1000,6 +1048,11 @@ fun CombinedZoomFiltersTuneTabContent(
                                                 colors = listOf(Color(0xFF64B5F6), Color.Black)
                                             )
                                         }
+                                        else -> {
+                                            Brush.linearGradient(
+                                                colors = listOf(Color.Gray, Color.Black)
+                                            )
+                                        }
                                     },
                                     shape = CircleShape
                                 )
@@ -1018,98 +1071,61 @@ fun CombinedZoomFiltersTuneTabContent(
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // Jobb oldal: Expozíció/Kontraszt
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    imageVector = if (isFrozen) Icons.Default.Contrast else Icons.Default.Exposure,
-                    contentDescription = null,
-                    tint = themeColor,
-                    modifier = Modifier.size(20.dp)
-                )
-                Slider(
-                    value = if (isFrozen) contrast else exposureIndex.toFloat(),
-                    onValueChange = { newValue ->
-                        if (isFrozen) {
-                            onContrastChange(newValue)
-                        } else {
-                            onExposureIndexChange(newValue.roundToInt())
-                        }
-                    },
-                    valueRange = if (isFrozen) 1.0f..3.0f else minExposureIndex.toFloat()..maxExposureIndex.toFloat(),
-
-                    colors = SliderDefaults.colors(
-                        activeTrackColor = themeColor,
-                        thumbColor = themeColor,
-                        inactiveTrackColor = Color(0xFF1B1A21)
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = if (isFrozen) String.format("%.1fx", contrast) else String.format("%+d", exposureIndex),
-                    color = Color.White,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.widthIn(min = 35.dp),
-                    textAlign = TextAlign.End
-                )
-            }
         }
 
-        // 3. Csúszkasor 2: Fényerő (Balra) és Élesítés (Jobbra) side-by-side (állandóan látható, de élő kép esetén letiltva) (magasság: 40.dp)
+        // 4. Sor: Expozíció (élő) vagy Kontraszt (fagyasztott) teljes szélességben (magasság: 40.dp)
         Row(
             modifier = Modifier.fillMaxWidth().height(40.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Bal oldal: Fényerő
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.LightMode,
-                    contentDescription = null,
-                    tint = if (isFrozen) themeColor else Color(0xFF5E5C64),
-                    modifier = Modifier.size(20.dp)
-                )
-                Slider(
-                    value = brightness,
-                    onValueChange = { onBrightnessChange(it) },
-                    valueRange = -80f..80f,
-                    enabled = isFrozen,
-                    colors = SliderDefaults.colors(
-                        activeTrackColor = themeColor,
-                        thumbColor = themeColor,
-                        inactiveTrackColor = Color(0xFF1B1A21),
-                        disabledActiveTrackColor = Color(0xFF3E3D45),
-                        disabledThumbColor = Color(0xFF3E3D45),
-                        disabledInactiveTrackColor = Color(0xFF1B1A21)
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = String.format("%.0f", brightness),
-                    color = if (isFrozen) Color.White else Color(0xFF5E5C64),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.widthIn(min = 32.dp),
-                    textAlign = TextAlign.End
-                )
-            }
+            Icon(
+                imageVector = if (isFrozen) Icons.Default.Contrast else Icons.Default.Exposure,
+                contentDescription = null,
+                tint = themeColor,
+                modifier = Modifier.size(20.dp)
+            )
+            Slider(
+                value = if (isFrozen) contrast else exposureIndex.toFloat(),
+                onValueChange = { newValue ->
+                    if (isFrozen) {
+                        onContrastChange(newValue)
+                    } else {
+                        onExposureIndexChange(newValue.roundToInt())
+                    }
+                },
+                valueRange = if (isFrozen) 1.0f..3.0f else minExposureIndex.toFloat()..maxExposureIndex.toFloat(),
+                colors = SliderDefaults.colors(
+                    activeTrackColor = themeColor,
+                    thumbColor = themeColor,
+                    inactiveTrackColor = Color(0xFF1B1A21)
+                ),
+                modifier = Modifier.weight(1f)
+            )
+            // Kattintásra az expozíció vagy a kontraszt visszaáll a kiinduló alapértelmezett értékre (0 vagy 1.0x)
+            Text(
+                text = if (isFrozen) String.format("%.1fx", contrast) else String.format("%+d", exposureIndex),
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .widthIn(min = 35.dp)
+                    .clickable {
+                        if (isFrozen) {
+                            onContrastChange(1.0f)
+                        } else {
+                            onExposureIndexChange(0)
+                        }
+                    },
+                textAlign = TextAlign.End
+            )
+        }
 
-            // Jobb oldal: Élesítés
+        // 5. Sor: Fókusz vezérlők (élő) vagy Sharpen csúszka (fagyasztott) teljes szélességben (magasság: 40.dp)
+        if (isFrozen) {
+            // Fagyasztott mód: Élesítés (Sharpen) teljes szélességben
             Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = Modifier.fillMaxWidth().height(40.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Canvas(
                     modifier = Modifier.size(18.dp)
@@ -1122,130 +1138,133 @@ fun CombinedZoomFiltersTuneTabContent(
                     }
                     drawPath(
                         path = path,
-                        color = if (isFrozen) themeColor else Color(0xFF5E5C64),
-                        style = Stroke(
+                        color = themeColor,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(
                             width = 2.dp.toPx(),
-                            cap = StrokeCap.Round,
-                            join = StrokeJoin.Round
+                            cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                            join = androidx.compose.ui.graphics.StrokeJoin.Round
                         )
                     )
                 }
+                Spacer(modifier = Modifier.width(4.dp))
                 var draggingValue by remember(sharpenStrength) { mutableFloatStateOf(sharpenStrength) }
                 Slider(
                     value = draggingValue,
                     onValueChange = { draggingValue = it },
                     onValueChangeFinished = { onSharpenStrengthChange(draggingValue) },
                     valueRange = 0.0f..10.0f,
-                    enabled = isFrozen,
                     colors = SliderDefaults.colors(
                         activeTrackColor = themeColor,
                         thumbColor = themeColor,
-                        inactiveTrackColor = Color(0xFF1B1A21),
-                        disabledActiveTrackColor = Color(0xFF3E3D45),
-                        disabledThumbColor = Color(0xFF3E3D45),
-                        disabledInactiveTrackColor = Color(0xFF1B1A21)
+                        inactiveTrackColor = Color(0xFF1B1A21)
                     ),
                     modifier = Modifier
                         .weight(1f)
                         .testTag("sharpen_strength_slider")
                 )
+                // Kattintásra az élesítés erőssége visszaáll az alapértelmezett 0.0-s értékre
                 Text(
                     text = String.format("%.1f", sharpenStrength),
-                    color = if (isFrozen) Color.White else Color(0xFF5E5C64),
+                    color = Color.White,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.widthIn(min = 28.dp),
+                    modifier = Modifier
+                        .widthIn(min = 28.dp)
+                        .clickable { onSharpenStrengthChange(0.0f) },
                     textAlign = TextAlign.End
                 )
             }
-        }
-
-        // 4. Csúszkasor 3: Fókusz (Balra: Módválasztó gombok, Jobbra: Manuális csúszka)
-        Row(
-            modifier = Modifier.fillMaxWidth().height(40.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            // Bal oldal: Fókusz Mód Választó (Auto / Locked / Manual)
+        } else {
+            // Élő mód: Fókusz mód választó (Auto, Locked, Manual) és Manuális Fókusz csúszka
             Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth().height(40.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                listOf("auto", "locked", "manual").forEach { mode ->
-                    val selected = focusMode == mode
-                    val icon = when (mode) {
-                        "auto" -> Icons.Default.CenterFocusStrong
-                        "locked" -> Icons.Default.Lock
-                        else -> Icons.Default.Tune
-                    }
-                    val label = when (mode) {
-                        "auto" -> stringResource(R.string.focus_auto)
-                        "locked" -> stringResource(R.string.focus_locked)
-                        else -> stringResource(R.string.focus_manual)
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(width = 34.dp, height = 40.dp)
-                            .background(
-                                if (selected) Color(0xFF231D30) else Color(0xFF111115),
-                                RoundedCornerShape(10.dp)
+                // Bal oldal: Fókusz Mód Választó (Auto / Locked / Manual)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    listOf("auto", "locked", "manual").forEach { mode ->
+                        val selected = focusMode == mode
+                        val icon = when (mode) {
+                            "auto" -> Icons.Default.CenterFocusStrong
+                            "locked" -> Icons.Default.Lock
+                            else -> Icons.Default.Tune
+                        }
+                        val label = when (mode) {
+                            "auto" -> stringResource(R.string.focus_auto)
+                            "locked" -> stringResource(R.string.focus_locked)
+                            else -> stringResource(R.string.focus_manual)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(width = 34.dp, height = 40.dp)
+                                .background(
+                                    if (selected) Color(0xFF231D30) else Color(0xFF111115),
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .border(
+                                    1.dp,
+                                    if (selected) themeColor else Color(0xFF2E2C33),
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .clickable { onFocusModeChange(mode) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = label,
+                                tint = if (selected) themeColor else Color(0xFF5E5C64),
+                                modifier = Modifier.size(18.dp)
                             )
-                            .border(
-                                1.dp,
-                                if (selected) themeColor else Color(0xFF2E2C33),
-                                RoundedCornerShape(10.dp)
-                            )
-                            .clickable { onFocusModeChange(mode) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = label,
-                            tint = if (selected) themeColor else Color(0xFF5E5C64),
-                            modifier = Modifier.size(18.dp)
-                        )
+                        }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(4.dp))
 
-            // Jobb oldal: Fókusztávolság csúszka (csak ha manual módban van és támogatott)
-            val isManualEnabled = focusMode == "manual" && minFocusDistance > 0f
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Adjust,
-                    contentDescription = null,
-                    tint = if (isManualEnabled) themeColor else Color(0xFF5E5C64),
-                    modifier = Modifier.size(20.dp)
-                )
-                Slider(
-                    value = manualFocusDistance,
-                    onValueChange = onManualFocusDistanceChange,
-                    valueRange = 0f..minFocusDistance.coerceAtLeast(0.1f),
-                    enabled = isManualEnabled,
-                    colors = SliderDefaults.colors(
-                        activeTrackColor = themeColor,
-                        thumbColor = themeColor,
-                        inactiveTrackColor = Color(0xFF1B1A21),
-                        disabledActiveTrackColor = Color(0xFF3E3D45),
-                        disabledThumbColor = Color(0xFF3E3D45),
-                        disabledInactiveTrackColor = Color(0xFF1B1A21)
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = if (isManualEnabled) String.format("%.1f", manualFocusDistance) else "Auto",
-                    color = if (isManualEnabled) Color.White else Color(0xFF5E5C64),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.widthIn(min = 28.dp),
-                    textAlign = TextAlign.End
-                )
+                // Jobb oldal: Fókusztávolság csúszka (csak ha manual módban van és támogatott)
+                val isManualEnabled = focusMode == "manual" && minFocusDistance > 0f
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Adjust,
+                        contentDescription = null,
+                        tint = if (isManualEnabled) themeColor else Color(0xFF5E5C64),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Slider(
+                        value = manualFocusDistance,
+                        onValueChange = onManualFocusDistanceChange,
+                        valueRange = 0f..minFocusDistance.coerceAtLeast(0.1f),
+                        enabled = isManualEnabled,
+                        colors = SliderDefaults.colors(
+                            activeTrackColor = themeColor,
+                            thumbColor = themeColor,
+                            inactiveTrackColor = Color(0xFF1B1A21),
+                            disabledActiveTrackColor = Color(0xFF3E3D45),
+                            disabledThumbColor = Color(0xFF3E3D45),
+                            disabledInactiveTrackColor = Color(0xFF1B1A21)
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    // Kattintásra a manuális fókusz visszaáll automatikus fókuszmódba (0.0 távolság)
+                    Text(
+                        text = if (isManualEnabled) String.format("%.1f", manualFocusDistance) else "Auto",
+                        color = if (isManualEnabled) Color.White else Color(0xFF5E5C64),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .widthIn(min = 32.dp)
+                            .clickable(enabled = isManualEnabled) { onManualFocusDistanceChange(0.0f) },
+                        textAlign = TextAlign.End
+                    )
+                }
             }
         }
     }

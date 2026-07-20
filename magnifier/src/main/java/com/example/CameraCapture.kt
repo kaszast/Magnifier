@@ -178,7 +178,7 @@ fun applyFocusSettings(
         }
         "locked" -> {
             camera2CameraControl.captureRequestOptions = androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
-                .setCaptureRequestOption(android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE, android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE_OFF)
+                .setCaptureRequestOption(android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE, android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE_AUTO)
                 .build()
         }
         "manual" -> {

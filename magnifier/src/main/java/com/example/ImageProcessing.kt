@@ -212,6 +212,7 @@ fun buildFilterMatrixValues(filterMode: FilterMode, contrast: Float, brightness:
                 0f, 0f, 0f, 1f, 0f
             )))
         }
+        else -> {}
     }
 
     // 2. Adjust contrast & brightness directly in color matrix values

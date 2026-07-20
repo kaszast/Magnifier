@@ -12,8 +12,8 @@ android {
     applicationId = "com.aistudio.magnifier.nwzkpq"
     minSdk = 24
     targetSdk = 35
-    versionCode = 41
-    versionName = "0.92"
+    versionCode = 43
+    versionName = "0.93"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
