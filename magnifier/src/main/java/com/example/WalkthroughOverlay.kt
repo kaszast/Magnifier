@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -182,14 +183,64 @@ fun WalkthroughOverlay(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         // Body description
-                        Text(
-                            text = stringResource(step.bodyRes),
-                            color = Color(0xFFA1A1AA),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Normal,
-                            textAlign = TextAlign.Center,
-                            lineHeight = 20.sp
-                        )
+                        if (page >= 5) {
+                            val bodyText = stringResource(step.bodyRes)
+                            val parsedLines = remember(bodyText) { parseOnboardingLines(bodyText) }
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                parsedLines.forEach { item ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(32.dp)
+                                                .background(step.iconColor.copy(alpha = 0.15f), CircleShape)
+                                                .border(1.dp, step.iconColor.copy(alpha = 0.8f), CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = item.icon,
+                                                contentDescription = null,
+                                                tint = step.iconColor,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column {
+                                            Text(
+                                                text = item.title,
+                                                color = Color.White,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            if (item.description.isNotEmpty()) {
+                                                Text(
+                                                    text = item.description,
+                                                    color = Color(0xFFA1A1AA),
+                                                    fontSize = 11.sp,
+                                                    lineHeight = 15.sp
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            Text(
+                                text = stringResource(step.bodyRes),
+                                color = Color(0xFFA1A1AA),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Normal,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 20.sp
+                            )
+                        }
                     }
                 }
 
@@ -246,6 +297,46 @@ fun WalkthroughOverlay(
                     )
                 }
             }
+        }
+    }
+}
+
+private fun getIconForEmoji(emoji: String): ImageVector {
+    return when (emoji) {
+        "⚡" -> Icons.Default.FlashOn
+        "⏸️", "⏸" -> Icons.Default.Pause
+        "💾" -> Icons.Default.Save
+        "📤" -> Icons.Default.Share
+        "📝" -> Icons.AutoMirrored.Filled.TextSnippet
+        "🔍" -> Icons.Default.ZoomIn
+        "☀️" -> Icons.Default.Brightness5
+        "🌗" -> Icons.Default.Contrast
+        "📐" -> Icons.Default.ChangeHistory
+        "🎯" -> Icons.Default.CenterFocusStrong
+        "⚙️", "⚙" -> Icons.Default.Tune
+        "🌈" -> Icons.Default.Palette
+        "🌐" -> Icons.Default.Language
+        "🌟" -> Icons.Default.Star
+        else -> Icons.Default.Info
+    }
+}
+
+private data class ParsedLine(val icon: ImageVector, val title: String, val description: String)
+
+private fun parseOnboardingLines(text: String): List<ParsedLine> {
+    val lines = text.split("\n")
+    return lines.mapNotNull { line ->
+        if (line.isBlank()) return@mapNotNull null
+        val emojis = listOf("⚡", "⏸️", "⏸", "💾", "📤", "📝", "🔍", "☀️", "🌗", "📐", "🎯", "⚙️", "⚙", "🌈", "🌐", "🌟")
+        val foundEmoji = emojis.firstOrNull { line.startsWith(it) } ?: ""
+        val remaining = line.substring(foundEmoji.length).trim()
+        val colonIndex = remaining.indexOf(":")
+        if (colonIndex != -1) {
+            val title = remaining.substring(0, colonIndex).trim()
+            val desc = remaining.substring(colonIndex + 1).trim()
+            ParsedLine(getIconForEmoji(foundEmoji), title, desc)
+        } else {
+            ParsedLine(getIconForEmoji(foundEmoji), remaining, "")
         }
     }
 }

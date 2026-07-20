@@ -593,18 +593,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
     LaunchedEffect(focusMode, manualFocusDistance, camera) {
         val cam = camera ?: return@LaunchedEffect
         applyFocusSettings(cam, focusMode, manualFocusDistance)
-        if (focusMode == "locked") {
-            val factory = androidx.camera.core.SurfaceOrientedMeteringPointFactory(1f, 1f)
-            val point = factory.createPoint(0.5f, 0.5f)
-            val action = androidx.camera.core.FocusMeteringAction.Builder(point, androidx.camera.core.FocusMeteringAction.FLAG_AF)
-                .disableAutoCancel()
-                .build()
-            try {
-                cam.cameraControl.startFocusAndMetering(action)
-            } catch (e: Exception) {
-                android.util.Log.e("Magnifier", "Failed to start focus lock trigger", e)
-            }
-        } else if (focusMode == "auto") {
+        if (focusMode == "auto") {
             try {
                 cam.cameraControl.cancelFocusAndMetering()
             } catch (e: Exception) {
@@ -1669,14 +1658,6 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                         showOcrDialog = false
                         tts?.stop()
                     },
-                    title = {
-                        Text(
-                            text = stringResource(R.string.ocr_dialog_title),
-                            color = themeColor,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp
-                        )
-                    },
                     text = {
                         Column(
                             modifier = Modifier.fillMaxWidth(),
@@ -1740,26 +1721,59 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                     },
                     confirmButton = {
                         val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
-                        androidx.compose.material3.TextButton(
-                            onClick = {
-                                clipboard.setText(androidx.compose.ui.text.AnnotatedString(ocrResultText))
-                                toastIcon = Icons.Default.ContentCopy
-                                toastSubIcon = Icons.Default.CheckCircle
-                                toastColor = themeColor
-                                showSavedToast = true
-                            }
+                        val context = androidx.compose.ui.platform.LocalContext.current
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceAround,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(stringResource(R.string.ocr_copy), color = themeColor)
-                        }
-                    },
-                    dismissButton = {
-                        androidx.compose.material3.TextButton(
-                            onClick = {
-                                showOcrDialog = false
-                                tts?.stop()
+                            IconButton(
+                                onClick = {
+                                    showOcrDialog = false
+                                    tts?.stop()
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = stringResource(R.string.action_close),
+                                    tint = Color(0xFFEF4444),
+                                    modifier = Modifier.size(24.dp)
+                                )
                             }
-                        ) {
-                            Text(stringResource(R.string.action_close), color = Color(0xFFEF4444))
+
+                            IconButton(
+                                onClick = {
+                                    clipboard.setText(androidx.compose.ui.text.AnnotatedString(ocrResultText))
+                                    toastIcon = Icons.AutoMirrored.Filled.TextSnippet
+                                    toastSubIcon = Icons.Default.CheckCircle
+                                    toastColor = themeColor
+                                    showSavedToast = true
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ContentCopy,
+                                    contentDescription = stringResource(R.string.ocr_copy),
+                                    tint = themeColor,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_TEXT, ocrResultText)
+                                    }
+                                    context.startActivity(Intent.createChooser(shareIntent, null))
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = stringResource(R.string.cd_share),
+                                    tint = themeColor,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
                     },
                     containerColor = Color(0xFF1F1E26)

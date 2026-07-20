@@ -109,13 +109,13 @@
     <string name="walkthrough_title_4">4. Text Reader &#38; Read Aloud</string>
     <string name="walkthrough_body_4">On frozen images, use the OCR button to recognize text, copy it to the clipboard, or have it read aloud.</string>
     <string name="walkthrough_title_5">5. Focus &#38; Camera Modes</string>
-    <string name="walkthrough_body_5">Use manual focus or focus lock for sharp images. Turn on HDR or Night Boost mode in Settings!</string>
+    <string name="walkthrough_body_5">Use manual focus for sharp images. Turn on HDR or Night Boost mode in Settings!</string>
     <string name="walkthrough_title_6">6. Main Action Icons</string>
     <string name="walkthrough_body_6">⚡ Flash: For low light conditions.\n⏸️ Freeze: Stop the live camera view for easy reading.\n💾 Save: Save the enhanced image to your gallery.\n📤 Share: Send the image directly to other apps.\n📝 Text Reader (OCR): Recognize and read aloud text.</string>
     <string name="walkthrough_title_7">7. Sliders &#38; Adjustments</string>
     <string name="walkthrough_body_7">🔍 Zoom: Smooth logarithmic zoom.\n☀️ Brightness / Exposure: Brighten the image (tap value to reset to 0).\n🌗 Contrast: Increase text contrast (tap value to reset to 1.0).\n📐 Sharpen: Sharpen text outline on frozen image (tap value to reset to 0.0).</string>
     <string name="walkthrough_title_8">8. Focus &#38; Settings</string>
-    <string name="walkthrough_body_8">🎯 Auto Focus: Continuous auto focus.\n🔒 Focus Lock: Freeze focus at the current distance.\n⚙️ Manual Focus Slider: Adjust focus manually (tap value to reset to Auto).\n🌈 Theme Dots: Customize the app\'s color theme.\n🌐 Language (flag): Switch between Hungarian and English.\n🌟 Rate: Rate the app on the Play Store.</string>
+    <string name="walkthrough_body_8">🎯 Auto Focus: Continuous auto focus.\n⚙️ Manual Focus Slider: Adjust focus manually (tap value to reset to Auto).\n🌈 Theme Dots: Customize the app\'s color theme.\n🌐 Language (flag): Switch between Hungarian and English.\n🌟 Rate: Rate the app on the Play Store.</string>
     <string name="action_next">Next</string>
     <string name="action_skip">Skip</string>
     <string name="action_start_using">Start</string>

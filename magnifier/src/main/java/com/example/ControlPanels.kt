@@ -375,7 +375,7 @@ fun SettingsTabContent(
                     imageVector = Icons.Default.HdrOn,
                     contentDescription = stringResource(R.string.setting_hdr),
                     tint = if (isHdrEnabled) themeColor else Color(0xFF5E5C64),
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(48.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Switch(
@@ -699,7 +699,7 @@ fun CombinedZoomFiltersTuneTabContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Canvas(
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(16.dp)
                 ) {
                     val path = Path().apply {
                         moveTo(size.width / 2f, 0f)
@@ -757,16 +757,14 @@ fun CombinedZoomFiltersTuneTabContent(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    listOf("auto", "locked", "manual").forEach { mode ->
+                    listOf("auto", "manual").forEach { mode ->
                         val selected = focusMode == mode
                         val icon = when (mode) {
                             "auto" -> Icons.Default.CenterFocusStrong
-                            "locked" -> Icons.Default.Lock
                             else -> Icons.Default.Tune
                         }
                         val label = when (mode) {
                             "auto" -> stringResource(R.string.focus_auto)
-                            "locked" -> stringResource(R.string.focus_locked)
                             else -> stringResource(R.string.focus_manual)
                         }
                         Box(
