@@ -1,14 +1,11 @@
+@file:Suppress("REDUNDANT_ELSE_IN_WHEN")
 package com.example
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -35,6 +32,9 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -50,21 +50,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import kotlin.math.ln
 import kotlin.math.exp
 
-import android.view.LayoutInflater
-import android.widget.ImageView
-import android.widget.TextView
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
-import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.roundToInt
+import androidx.compose.material.icons.automirrored.filled.Help
+import java.util.Locale
 
 // =============================================================================
 //  ControlPanels.kt — Az alsó vezérlőkártya négy fülének (tab) tartalma
@@ -182,424 +175,6 @@ import kotlin.math.roundToInt
  *                            a csúszka húzásánál false.
  */
 @Composable
-fun ZoomTabContent(
-
-    themeColor: Color,
-    isFrozen: Boolean,
-    frozenScale: Float,
-    onFrozenScaleChange: (Float) -> Unit,
-    liveZoomRatio: Float,
-    extraDigitalZoom: Float,
-    maxZoom: Float,
-    sliderMin: Float,
-    sliderMax: Float,
-    onApplyTotalZoom: (Float, Boolean) -> Unit,
-) {
-    // A fül tartalma egy függőleges oszlop, amely a teljes szélességet kitölti
-    // (fillMaxWidth), és a gyermeksorok közé egységes 8dp térközt tesz.
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        // A megjelenített "aktuális teljes nagyítás": befagyasztott képnél a
-        // frozenScale, élő kameránál a hardveres és digitális rész szorzata.
-        val currentTotalZoom = if (isFrozen) frozenScale else (liveZoomRatio * extraDigitalZoom)
-        // Digitális tartományban vagyunk-e? Csak élő módban értelmes, és akkor,
-        // ha a teljes zoom túllépi a hardver max. zoomját -> a plusz nagyítás már
-        // szoftveres (digitális). Ez kapcsolja be lentebb a kis "Memory" jelvényt.
-        val isDigitalRange = !isFrozen && (liveZoomRatio * extraDigitalZoom > maxZoom)
-
-        // Fejlécsor. A külső Row a teljes szélességen SpaceBetween-nel osztaná el
-        // a gyermekeit (bal/jobb szélre), itt csak egyetlen bal oldali csoport van.
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Bal csoport: zoom-ikon + verzió + (feltételes) digitális-zoom jelvény,
-            // egymás mellett 6dp térközzel, függőlegesen középre igazítva.
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.app_name),
-                    color = themeColor,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                // Csak digitális tartományban jelenik meg: halvány lila hátterű,
-                // lekerekített kis "chip", benne a memóriachip (digitális) ikon.
-                if (isDigitalRange) {
-                    // Modifier-sorrend: előbb a lekerekített háttér (RoundedCornerShape
-                    // = lekerekített sarkú téglalap), UTÁNA padding. Így a padding a
-                    // háttéren BELÜL képez térközt az ikon körül. Fordított sorrendben
-                    // a háttér a padding mögé, kisebb területre festődne.
-                    Box(
-                        modifier = Modifier
-                            .background(Color(0xFFD0BCFF).copy(alpha = 0.15f), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Memory,
-                            contentDescription = stringResource(R.string.cd_digital_zoom),
-                            tint = Color(0xFFD0BCFF),
-                            modifier = Modifier.size(12.dp)
-                        )
-                    }
-                }
-            }
-        }
-
-        // Fő vezérlősor: [-] kör-gomb | csúszka | [+] kör-gomb | érték-felirat.
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            // [-] gomb: 48dp-s kör (CircleShape = teljes kör alakzat), sötét
-            // háttérrel és vékony kerettel. A .clickable a Box egészét kattinthatóvá
-            // teszi; kattintásra 0.5x-zel csökkenti a nagyítást. Befagyasztott képnél
-            // közvetlenül a frozenScale-t állítja (min. 0.5x), élőben a teljes zoom
-            // célértékét adja tovább a szülőnek (pásztázás nem nullázódik: false).
-            // A contentAlignment.Center a benti ikont a kör közepére helyezi.
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(Color(0xFF1B1A21), CircleShape)
-                    .border(1.dp, Color(0xFF2E2C33), CircleShape)
-                    .clickable {
-                        if (isFrozen) {
-                            onFrozenScaleChange(max(0.5f, frozenScale - 0.5f))
-                        } else {
-                            onApplyTotalZoom(liveZoomRatio * extraDigitalZoom - 0.5f, false)
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Remove,
-                    contentDescription = stringResource(R.string.cd_zoom_out),
-                    tint = Color(0xFFE6E1E5),
-                    modifier = Modifier.size(18.dp)
-                 )
-            }
-
-            // Slider: húzható csúszka. `value` az aktuális pozíció (coerceIn a
-            // tartományba szorítja, hogy sose fusson ki a sávból), `valueRange` a
-            // min..max, `onValueChange` pedig húzáskor hívódik az új értékkel — ez
-            // a hoistolt esemény "felfelé". A colors a téma szerinti sávszínek.
-            // .weight(1f): a csúszka kapja a sorban a gombok utáni MARADÉK helyet.
-            // .testTag("zoom_slider"): fogódzó az automata UI-teszteknek.
-            Slider(
-                value = currentTotalZoom.coerceIn(sliderMin, sliderMax),
-                onValueChange = { newValue ->
-                    if (isFrozen) {
-                        onFrozenScaleChange(newValue)
-                    } else {
-                        onApplyTotalZoom(newValue, false)
-                    }
-                },
-                valueRange = sliderMin..sliderMax,
-                colors = SliderDefaults.colors(
-                    activeTrackColor = themeColor,
-                    thumbColor = themeColor,
-                    inactiveTrackColor = Color(0xFF1B1A21)
-                ),
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("zoom_slider")
-            )
-
-            // [+] gomb: a [-] tükörképe, 0.5x-zel NÖVELI a nagyítást (min()-nel a
-            // csúszka maximumára korlátozva befagyasztott módban).
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(Color(0xFF1B1A21), CircleShape)
-                    .border(1.dp, Color(0xFF2E2C33), CircleShape)
-                    .clickable {
-                        if (isFrozen) {
-                            onFrozenScaleChange(min(sliderMax, frozenScale + 0.5f))
-                        } else {
-                            onApplyTotalZoom(liveZoomRatio * extraDigitalZoom + 0.5f, false)
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(R.string.cd_zoom_in),
-                    tint = Color(0xFFE6E1E5),
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            // Aktuális nagyítás szövege, pl. "2.5x". A widthIn(min = 55.dp) fix
-            // minimális szélességet ad, hogy a szám változásakor ne ugráljon a
-            // layout; a TextAlign.End jobbra igazít ezen a sávon belül.
-            Text(
-                text = String.format("%.1fx", currentTotalZoom),
-                color = Color.White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Black,
-                modifier = Modifier.widthIn(min = 55.dp),
-                textAlign = TextAlign.End
-            )
-        }
-
-
-    }
-}
-
-@Composable
-fun FiltersAndTuneTabContent(
-
-    themeColor: Color,
-    filterMode: FilterMode,
-    onFilterModeChange: (FilterMode) -> Unit,
-    isFrozen: Boolean,
-    contrast: Float,
-    onContrastChange: (Float) -> Unit,
-    brightness: Float,
-    onBrightnessChange: (Float) -> Unit,
-    exposureIndex: Int,
-    onExposureIndexChange: (Int) -> Unit,
-    minExposureIndex: Int,
-    maxExposureIndex: Int,
-    sharpenStrength: Float,
-    onSharpenStrengthChange: (Float) -> Unit,
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        // Fejlécsor: beállítások ikon + verziószám
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.app_name),
-                    color = themeColor,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        // 1. Szűrők választó sora
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            FilterMode.values().forEach { mode ->
-                val selected = filterMode == mode
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 40.dp)
-                        .background(
-                            if (selected) Color(0xFF231D30) else Color(0xFF111115),
-                            RoundedCornerShape(14.dp)
-                        )
-                        .border(
-                            1.dp,
-                            if (selected) themeColor else Color(0xFF2E2C33),
-                            RoundedCornerShape(14.dp)
-                        )
-                        .clickable { onFilterModeChange(mode) }
-                        .padding(vertical = 6.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .background(
-                                brush = when (mode) {
-                                    FilterMode.NORMAL -> {
-                                        Brush.sweepGradient(
-                                            colors = listOf(
-                                                Color(0xFFFF007F), Color(0xFFFF0000), Color(0xFFFF7F00),
-                                                Color(0xFFFFFF00), Color(0xFF00FF00), Color(0xFF00FFFF),
-                                                Color(0xFF0000FF), Color(0xFF7F00FF), Color(0xFFFF007F)
-                                            )
-                                        )
-                                    }
-                                    FilterMode.MONOCHROME -> {
-                                        Brush.linearGradient(
-                                            colors = listOf(Color.White, Color.Black)
-                                        )
-                                    }
-                                    FilterMode.INVERTED -> {
-                                        Brush.linearGradient(
-                                            colors = listOf(Color.Cyan, Color.Black)
-                                        )
-                                    }
-                                    FilterMode.YELLOW -> {
-                                        Brush.linearGradient(
-                                            colors = listOf(Color(0xFFFBBF24), Color.Black)
-                                        )
-                                    }
-                                    FilterMode.RED -> {
-                                        Brush.linearGradient(
-                                            colors = listOf(Color.Red, Color.Black)
-                                        )
-                                    }
-                                    FilterMode.DEUTERANOPIA -> {
-                                        Brush.linearGradient(
-                                            colors = listOf(Color(0xFF81C784), Color.Black)
-                                        )
-                                    }
-                                    FilterMode.PROTANOPIA -> {
-                                        Brush.linearGradient(
-                                            colors = listOf(Color(0xFFE57373), Color.Black)
-                                        )
-                                    }
-                                    FilterMode.TRITANOPIA -> {
-                                        Brush.linearGradient(
-                                            colors = listOf(Color(0xFF64B5F6), Color.Black)
-                                        )
-                                    }
-                                    else -> {
-                                        Brush.linearGradient(
-                                            colors = listOf(Color.Gray, Color.Black)
-                                        )
-                                    }
-                                },
-                                shape = CircleShape
-                            )
-                            .border(1.dp, Color(0xFF2E2C33).copy(alpha = 0.5f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (selected) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = stringResource(R.string.cd_selected),
-                                tint = if (mode == FilterMode.MONOCHROME) Color.Black else Color.White,
-                                modifier = Modifier.size(12.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(2.dp))
-
-        // 2. Csúszkasorok (expozíció/kontraszt, fényerő, élesítés)
-        // ELSŐ csúszkasor — "kettős célú": fagyasztva a KONTRASZTOT, élőben az EXPOZÍCIÓT (EV) állítja.
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = if (isFrozen) Icons.Default.Contrast else Icons.Default.Exposure,
-                contentDescription = stringResource(if (isFrozen) R.string.label_contrast else R.string.label_exposure),
-                tint = themeColor,
-                modifier = Modifier.size(18.dp)
-            )
-            Slider(
-                value = if (isFrozen) contrast else exposureIndex.toFloat(),
-                onValueChange = { newValue ->
-                    if (isFrozen) {
-                        onContrastChange(newValue)
-                    } else {
-                        onExposureIndexChange(newValue.roundToInt())
-                    }
-                },
-                valueRange = if (isFrozen) 1.0f..3.0f else minExposureIndex.toFloat()..maxExposureIndex.toFloat(),
-
-                colors = SliderDefaults.colors(
-                    activeTrackColor = themeColor,
-                    thumbColor = themeColor,
-                    inactiveTrackColor = Color(0xFF1B1A21)
-                ),
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        // FÉNYERŐ csúszka — CSAK befagyasztott képnél jelenik meg
-        if (isFrozen) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.LightMode,
-                    contentDescription = stringResource(R.string.label_brightness),
-                    tint = themeColor,
-                    modifier = Modifier.size(18.dp)
-                )
-                Slider(
-                    value = brightness,
-                    onValueChange = { onBrightnessChange(it) },
-                    valueRange = -80f..80f,
-                    colors = SliderDefaults.colors(
-                        activeTrackColor = themeColor,
-                        thumbColor = themeColor,
-                        inactiveTrackColor = Color(0xFF1B1A21)
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-
-        // ÉLESÍTÉS csúszka — csak megállított kép (isFrozen = true) esetén érhető el.
-        if (isFrozen) {
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Canvas(
-                    modifier = Modifier.size(18.dp)
-                ) {
-                    val path = Path().apply {
-                        moveTo(size.width / 2f, 0f)
-                        lineTo(size.width, size.height)
-                        lineTo(0f, size.height)
-                        close()
-                    }
-                    drawPath(
-                        path = path,
-                        color = themeColor,
-                        style = Stroke(
-                            width = 2.dp.toPx(),
-                            cap = StrokeCap.Round,
-                            join = StrokeJoin.Round
-                        )
-                    )
-                }
-                var draggingValue by remember(sharpenStrength) { mutableFloatStateOf(sharpenStrength) }
-
-                Slider(
-                    value = draggingValue,
-                    onValueChange = { draggingValue = it },
-                    onValueChangeFinished = { onSharpenStrengthChange(draggingValue) },
-                    valueRange = 0.0f..10.0f,
-                    colors = SliderDefaults.colors(
-                        activeTrackColor = themeColor,
-                        thumbColor = themeColor,
-                        inactiveTrackColor = Color(0xFF1B1A21)
-                    ),
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("sharpen_strength_slider")
-                )
-            }
-        }
-    }
-}
-
-@Composable
 fun SettingsTabContent(
     themeColor: Color,
     themeOptions: List<AppThemeColor>,
@@ -608,12 +183,9 @@ fun SettingsTabContent(
     onRateApp: () -> Unit,
     onShowTutorial: () -> Unit,
     onShowTipJar: () -> Unit,
-    currentLanguage: String,
     onChangeLanguage: (String) -> Unit,
-    isHdrSupported: Boolean,
     isHdrEnabled: Boolean,
     onHdrEnabledChange: (Boolean) -> Unit,
-    isNightSupported: Boolean,
     isNightEnabled: Boolean,
     onNightEnabledChange: (Boolean) -> Unit
 ) {
@@ -776,7 +348,7 @@ fun SettingsTabContent(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Help,
+                    imageVector = Icons.AutoMirrored.Filled.Help,
                     contentDescription = stringResource(R.string.action_show_tutorial),
                     tint = themeColor,
                     modifier = Modifier.size(20.dp)
@@ -785,7 +357,7 @@ fun SettingsTabContent(
         }
 
         // Kamera Módok (HDR / Éjszakai képjavítás)
-        androidx.compose.material3.HorizontalDivider(
+        HorizontalDivider(
             modifier = Modifier.padding(vertical = 4.dp),
             color = Color(0xFF2E2C33)
         )
@@ -806,10 +378,10 @@ fun SettingsTabContent(
                     modifier = Modifier.size(32.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
-                androidx.compose.material3.Switch(
+                Switch(
                     checked = isHdrEnabled,
                     onCheckedChange = onHdrEnabledChange,
-                    colors = androidx.compose.material3.SwitchDefaults.colors(
+                    colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.Black,
                         checkedTrackColor = themeColor,
                         uncheckedThumbColor = Color(0xFF5E5C64),
@@ -829,10 +401,10 @@ fun SettingsTabContent(
                     modifier = Modifier.size(32.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
-                androidx.compose.material3.Switch(
+                Switch(
                     checked = isNightEnabled,
                     onCheckedChange = onNightEnabledChange,
-                    colors = androidx.compose.material3.SwitchDefaults.colors(
+                    colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.Black,
                         checkedTrackColor = themeColor,
                         uncheckedThumbColor = Color(0xFF5E5C64),
@@ -852,7 +424,6 @@ fun CombinedZoomFiltersTuneTabContent(
     onFrozenScaleChange: (Float) -> Unit,
     liveZoomRatio: Float,
     extraDigitalZoom: Float,
-    maxZoom: Float,
     sliderMin: Float,
     sliderMax: Float,
     onApplyTotalZoom: (Float, Boolean) -> Unit,
@@ -916,7 +487,7 @@ fun CombinedZoomFiltersTuneTabContent(
             )
             // Kattintásra a nagyítás visszaáll az alapértelmezett 1.0x-es értékre
             Text(
-                text = String.format("%.1fx", currentTotalZoom),
+                text = String.format(Locale.US, "%.1fx", currentTotalZoom),
                 color = Color.White,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
@@ -961,7 +532,7 @@ fun CombinedZoomFiltersTuneTabContent(
             )
             // Kattintásra a fényerő visszaáll az alapértelmezett 0-ra
             Text(
-                text = String.format("%.0f", brightness),
+                text = String.format(Locale.US, "%.0f", brightness),
                 color = if (isFrozen) Color.White else Color(0xFF5E5C64),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
@@ -1103,7 +674,7 @@ fun CombinedZoomFiltersTuneTabContent(
             )
             // Kattintásra az expozíció vagy a kontraszt visszaáll a kiinduló alapértelmezett értékre (0 vagy 1.0x)
             Text(
-                text = if (isFrozen) String.format("%.1fx", contrast) else String.format("%+d", exposureIndex),
+                text = if (isFrozen) String.format(Locale.US, "%.1fx", contrast) else String.format(Locale.US, "%+d", exposureIndex),
                 color = Color.White,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
@@ -1164,7 +735,7 @@ fun CombinedZoomFiltersTuneTabContent(
                 )
                 // Kattintásra az élesítés erőssége visszaáll az alapértelmezett 0.0-s értékre
                 Text(
-                    text = String.format("%.1f", sharpenStrength),
+                    text = String.format(Locale.US, "%.1f", sharpenStrength),
                     color = Color.White,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
@@ -1255,7 +826,7 @@ fun CombinedZoomFiltersTuneTabContent(
                     )
                     // Kattintásra a manuális fókusz visszaáll automatikus fókuszmódba (0.0 távolság)
                     Text(
-                        text = if (isManualEnabled) String.format("%.1f", manualFocusDistance) else "Auto",
+                        text = if (isManualEnabled) String.format(Locale.US, "%.1f", manualFocusDistance) else "Auto",
                         color = if (isManualEnabled) Color.White else Color(0xFF5E5C64),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
@@ -1282,7 +853,6 @@ fun CombinedZoomFiltersTuneTabContentPreviewLive() {
             onFrozenScaleChange = {},
             liveZoomRatio = 1.0f,
             extraDigitalZoom = 1.0f,
-            maxZoom = 8.0f,
             sliderMin = 1.0f,
             sliderMax = 8.0f,
 
@@ -1320,7 +890,6 @@ fun CombinedZoomFiltersTuneTabContentPreviewFrozen() {
             onFrozenScaleChange = {},
             liveZoomRatio = 1.0f,
             extraDigitalZoom = 1.0f,
-            maxZoom = 8.0f,
             sliderMin = 1.0f,
             sliderMax = 8.0f,
 
@@ -1351,7 +920,6 @@ fun CombinedZoomFiltersTuneTabContentPreviewFrozen() {
 fun SettingsTabContentPreview() {
     Box(modifier = Modifier.padding(16.dp)) {
         SettingsTabContent(
-
             themeColor = Color(0xFF8B5CF6),
             themeOptions = listOf(
                 AppThemeColor(R.string.theme_purple, Color(0xFFB180FF)),
@@ -1365,12 +933,9 @@ fun SettingsTabContentPreview() {
             onRateApp = {},
             onShowTutorial = {},
             onShowTipJar = {},
-            currentLanguage = "hu",
             onChangeLanguage = {},
-            isHdrSupported = true,
             isHdrEnabled = false,
             onHdrEnabledChange = {},
-            isNightSupported = true,
             isNightEnabled = true,
             onNightEnabledChange = {}
         )

@@ -33,32 +33,16 @@
  */
 package com.example
 
-import android.Manifest
-import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.hardware.camera2.CameraCharacteristics
-import android.hardware.camera2.CameraManager
 import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.Environment
-import android.provider.MediaStore
 import android.util.Log
-import android.view.MotionEvent
-import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.annotation.StringRes
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
-import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -67,12 +51,12 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.TextSnippet
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -82,7 +66,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
@@ -94,36 +77,24 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.FileProvider
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.ui.theme.MyApplicationTheme
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
 import java.io.File
 import java.io.FileOutputStream
-import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.roundToInt
+import androidx.core.content.edit
+import androidx.core.net.toUri
 
 // Egyedi "Saver" az Offset típushoz a rememberSaveable számára (lásd lentebb az ÁLLAPOTOK
 // szekcióban). A rememberSaveable csak olyasmit tud automatikusan elmenteni, amit a rendszer
@@ -138,7 +109,7 @@ private val OffsetSaver = listSaver<Offset, Float>(
 
 // Egy témaszín-opció: a megjelenítendő név egy string-erőforrás azonosítója (@StringRes → fordítható
 // szöveg a strings.xml-ből, nem beégetett magyar/angol string) és a hozzá tartozó szín.
-data class AppThemeColor(@StringRes val nameRes: Int, val color: Color)
+data class AppThemeColor(@param:StringRes val nameRes: Int, val color: Color)
 
 // ============================================================================
 //  NoCameraScreen — hibaképernyő, ha nincs használható kamera
@@ -302,7 +273,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
     // Nyelvváltó segédfüggvény, ami elmenti a választást és újraindítja az Activity-t
     val onChangeLanguage: (String) -> Unit = remember {
         { langCode ->
-            prefs.edit().putString("app_lang", langCode).apply()
+            prefs.edit { putString("app_lang", langCode) }
             currentLanguage = langCode
             var ctx = context
             while (ctx is android.content.ContextWrapper) {
@@ -667,7 +638,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
         if (tts == null) {
             tts = android.speech.tts.TextToSpeech(context) { status ->
                 if (status == android.speech.tts.TextToSpeech.SUCCESS) {
-                    val locale = if (language == "hu") java.util.Locale("hu") else java.util.Locale.ENGLISH
+                    val locale = if (language == "hu") java.util.Locale.forLanguageTag("hu") else java.util.Locale.ENGLISH
                     val result = tts?.setLanguage(locale)
                     if (result == android.speech.tts.TextToSpeech.LANG_MISSING_DATA || result == android.speech.tts.TextToSpeech.LANG_NOT_SUPPORTED) {
                         tts?.setLanguage(java.util.Locale.ENGLISH)
@@ -678,7 +649,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                 }
             }
         } else {
-            val locale = if (language == "hu") java.util.Locale("hu") else java.util.Locale.ENGLISH
+            val locale = if (language == "hu") java.util.Locale.forLanguageTag("hu") else java.util.Locale.ENGLISH
             tts?.setLanguage(locale)
             tts?.speak(text, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, null)
         }
@@ -696,7 +667,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                     ocrResultText = text
                     showOcrDialog = true
                 } else {
-                    toastIcon = Icons.Default.TextSnippet
+                    toastIcon = Icons.AutoMirrored.Filled.TextSnippet
                     toastSubIcon = Icons.Default.Warning
                     toastColor = Color(0xFFFFB300) // amber yellow
                     showSavedToast = true
@@ -705,7 +676,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
             .addOnFailureListener { e ->
                 isProcessing = false
                 android.util.Log.e("Magnifier", "OCR failed", e)
-                toastIcon = Icons.Default.TextSnippet
+                toastIcon = Icons.AutoMirrored.Filled.TextSnippet
                 toastSubIcon = Icons.Default.Error
                 toastColor = Color(0xFFEF4444) // red
                 showSavedToast = true
@@ -1308,7 +1279,6 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                                 onFrozenScaleChange = { frozenScale = it },
                                 liveZoomRatio = liveZoomRatio,
                                 extraDigitalZoom = extraDigitalZoom,
-                                maxZoom = maxZoom,
                                 sliderMin = sliderMin,
                                 sliderMax = sliderMax,
 
@@ -1338,22 +1308,22 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                                 currentThemeIndex = currentThemeIndex,
                                 onThemeIndexChange = { index ->
                                     currentThemeIndex = index
-                                    prefs.edit().putInt("theme_index", index).apply()
+                                    prefs.edit { putInt("theme_index", index) }
                                 },
                                 onRateApp = {
                                     val packageName = context.packageName
                                     val intent = Intent(Intent.ACTION_VIEW).apply {
-                                        data = Uri.parse("market://details?id=$packageName")
+                                        data = "market://details?id=$packageName".toUri()
                                     }
                                     try {
                                         context.startActivity(intent)
-                                    } catch (e: Exception) {
+                                    } catch (_: Exception) {
                                         val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                                            data = Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
+                                            data = "https://play.google.com/store/apps/details?id=$packageName".toUri()
                                         }
                                         context.startActivity(webIntent)
                                     }
-                                    prefs.edit().putBoolean("rate_done", true).apply()
+                                    prefs.edit { putBoolean("rate_done", true) }
                                 },
                                 onShowTutorial = {
                                     showWalkthrough = true
@@ -1361,15 +1331,12 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                                 onShowTipJar = {
                                     showTipJar = true
                                 },
-                                currentLanguage = currentLanguage,
                                 onChangeLanguage = onChangeLanguage,
-                                isHdrSupported = isHdrSupported,
                                 isHdrEnabled = isHdrEnabled,
                                 onHdrEnabledChange = { enabled ->
                                     isHdrEnabled = enabled
                                     if (enabled) isNightEnabled = false
                                 },
-                                isNightSupported = isNightSupported,
                                 isNightEnabled = isNightEnabled,
                                 onNightEnabledChange = { enabled ->
                                     isNightEnabled = enabled
@@ -1432,7 +1399,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
 
                                             // Növeljük a mentések számát és ellenőrizzük az értékelést
                                             val saveCount = prefs.getInt("save_count", 0) + 1
-                                            prefs.edit().putInt("save_count", saveCount).apply()
+                                            prefs.edit { putInt("save_count", saveCount) }
 
                                             val rateNever = prefs.getBoolean("rate_never", false)
                                             val rateDone = prefs.getBoolean("rate_done", false)
@@ -1532,7 +1499,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                             if (bmp != null) {
                                 runOcrOnBitmap(bmp)
                             } else {
-                                toastIcon = Icons.Default.TextSnippet
+                                toastIcon = Icons.AutoMirrored.Filled.TextSnippet
                                 toastSubIcon = Icons.Default.Warning
                                 toastColor = Color(0xFFFFB300)
                                 showSavedToast = true
@@ -1645,7 +1612,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                     themeColor = themeColor,
                     onDismiss = {
                         showWalkthrough = false
-                        prefs.edit().putBoolean("walkthrough_shown", true).apply()
+                        prefs.edit { putBoolean("walkthrough_shown", true) }
                     }
                 )
             }
@@ -1656,17 +1623,17 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                     themeColor = themeColor,
                     onRateNow = {
                         showRateDialog = false
-                        prefs.edit().putBoolean("rate_done", true).apply()
+                        prefs.edit { putBoolean("rate_done", true) }
 
                         val packageName = context.packageName
                         val intent = Intent(Intent.ACTION_VIEW).apply {
-                            data = Uri.parse("market://details?id=$packageName")
+                            data = "market://details?id=$packageName".toUri()
                         }
                         try {
                             context.startActivity(intent)
-                        } catch (e: Exception) {
+                        } catch (_: Exception) {
                             val webIntent = Intent(Intent.ACTION_VIEW).apply {
-                                data = Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
+                                data = "https://play.google.com/store/apps/details?id=$packageName".toUri()
                             }
                             context.startActivity(webIntent)
                         }
@@ -1676,7 +1643,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                     },
                     onRateNever = {
                         showRateDialog = false
-                        prefs.edit().putBoolean("rate_never", true).apply()
+                        prefs.edit { putBoolean("rate_never", true) }
                     }
                 )
             }
@@ -1735,16 +1702,16 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                androidx.compose.material3.Button(
+                                Button(
                                     onClick = { speakText(ocrResultText, "hu") },
-                                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                    colors = ButtonDefaults.buttonColors(
                                         containerColor = themeColor,
                                         contentColor = Color.Black
                                     ),
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.VolumeUp,
+                                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                                         contentDescription = null,
                                         modifier = Modifier.size(16.dp)
                                     )
@@ -1752,16 +1719,16 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                                     Text("Magyar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
 
-                                androidx.compose.material3.Button(
+                                Button(
                                     onClick = { speakText(ocrResultText, "en") },
-                                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                    colors = ButtonDefaults.buttonColors(
                                         containerColor = themeColor,
                                         contentColor = Color.Black
                                     ),
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.VolumeUp,
+                                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                                         contentDescription = null,
                                         modifier = Modifier.size(16.dp)
                                     )

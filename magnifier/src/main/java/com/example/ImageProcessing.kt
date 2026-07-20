@@ -73,7 +73,7 @@ import kotlin.math.roundToInt
  *      egy Int viszont bármikor tárolható, a szöveg csak akkor kell, amikor
  *      tényleg kirajzoljuk.
  */
-enum class FilterMode(@StringRes val labelRes: Int, @StringRes val descriptionRes: Int) {
+enum class FilterMode(@param:StringRes val labelRes: Int, @param:StringRes val descriptionRes: Int) {
     NORMAL(R.string.filter_normal, R.string.filter_normal_desc),
     MONOCHROME(R.string.filter_monochrome, R.string.filter_monochrome_desc),
     INVERTED(R.string.filter_inverted, R.string.filter_inverted_desc),
@@ -212,7 +212,6 @@ fun buildFilterMatrixValues(filterMode: FilterMode, contrast: Float, brightness:
                 0f, 0f, 0f, 1f, 0f
             )))
         }
-        else -> {}
     }
 
     // 2. Adjust contrast & brightness directly in color matrix values

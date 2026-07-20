@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.TextSnippet
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -474,7 +475,7 @@ fun ActionButtonsRow(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.TextSnippet,
+                    imageVector = Icons.AutoMirrored.Filled.TextSnippet,
                     contentDescription = stringResource(R.string.ocr_button),
                     tint = themeColor,
                     modifier = Modifier.size(18.dp)

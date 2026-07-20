@@ -38,7 +38,7 @@ class BillingHelper(
         try {
             billingClient = BillingClient.newBuilder(context)
                 .setListener(this)
-                .enablePendingPurchases()
+                .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
                 .build()
 
             startConnection()

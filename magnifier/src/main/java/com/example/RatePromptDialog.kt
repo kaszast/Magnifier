@@ -115,7 +115,7 @@ fun RatePromptDialog(
                                 contentColor = Color.White
                             ),
                             shape = RoundedCornerShape(14.dp),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(
+                            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
                                 brush = androidx.compose.ui.graphics.SolidColor(Color(0xFF2E2C33))
                             ),
                             modifier = Modifier
@@ -136,7 +136,7 @@ fun RatePromptDialog(
                                 contentColor = Color.White.copy(alpha = 0.5f)
                             ),
                             shape = RoundedCornerShape(14.dp),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(
+                            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
                                 brush = androidx.compose.ui.graphics.SolidColor(Color.Transparent)
                             ),
                             modifier = Modifier

@@ -1,6 +1,6 @@
 package com.example
 
-import androidx.compose.animation.*
+import androidx.compose.material.icons.automirrored.filled.TextSnippet
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
@@ -63,7 +63,7 @@ fun WalkthroughOverlay(
         WalkthroughStep(
             titleRes = R.string.walkthrough_title_4,
             bodyRes = R.string.walkthrough_body_4,
-            icon = Icons.Default.TextSnippet,
+            icon = Icons.AutoMirrored.Filled.TextSnippet,
             iconColor = themeColor
         ),
         WalkthroughStep(
