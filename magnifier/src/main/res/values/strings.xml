@@ -26,6 +26,29 @@
     <string name="filter_yellow_desc">Gyengénlátóknak ideális kontraszt</string>
     <string name="filter_red">Vörös</string>
     <string name="filter_red_desc">Éjszakai látásmegőrzés</string>
+    <string name="filter_deuteranopia">Deuteranópia</string>
+    <string name="filter_deuteranopia_desc">Zöld-gyengeség korrekció</string>
+    <string name="filter_protanopia">Protanópia</string>
+    <string name="filter_protanopia_desc">Piros-gyengeség korrekció</string>
+    <string name="filter_tritanopia">Tritanópia</string>
+    <string name="filter_tritanopia_desc">Kék-gyengeség korrekció</string>
+
+    <string name="focus_auto">Auto Fókusz</string>
+    <string name="focus_locked">Zárolt Fókusz</string>
+    <string name="focus_manual">Manuális Fókusz</string>
+    <string name="label_focus">Fókusz</string>
+
+    <string name="ocr_button">Szövegolvasó (OCR)</string>
+    <string name="ocr_dialog_title">Felismerési Eredmény</string>
+    <string name="ocr_copy">Másolás</string>
+    <string name="ocr_speak">Felolvasás</string>
+    <string name="ocr_stop">Leállítás</string>
+    <string name="ocr_no_text">Nem található felismerhető szöveg a képen.</string>
+    <string name="ocr_processing">Felismerés folyamatban&#8230;</string>
+
+    <string name="setting_hdr">HDR Üzemmód</string>
+    <string name="setting_night">Éjszakai Képjavítás</string>
+    <string name="label_hdr_night">Kamera Módok</string>
 
     <string name="theme_purple">Lila</string>
     <string name="theme_green">Zöld</string>

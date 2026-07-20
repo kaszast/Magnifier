@@ -78,7 +78,10 @@ enum class FilterMode(@StringRes val labelRes: Int, @StringRes val descriptionRe
     MONOCHROME(R.string.filter_monochrome, R.string.filter_monochrome_desc),
     INVERTED(R.string.filter_inverted, R.string.filter_inverted_desc),
     YELLOW(R.string.filter_yellow, R.string.filter_yellow_desc),
-    RED(R.string.filter_red, R.string.filter_red_desc)
+    RED(R.string.filter_red, R.string.filter_red_desc),
+    DEUTERANOPIA(R.string.filter_deuteranopia, R.string.filter_deuteranopia_desc),
+    PROTANOPIA(R.string.filter_protanopia, R.string.filter_protanopia_desc),
+    TRITANOPIA(R.string.filter_tritanopia, R.string.filter_tritanopia_desc)
 }
 
 /**
@@ -179,6 +182,33 @@ fun buildFilterMatrixValues(filterMode: FilterMode, contrast: Float, brightness:
                 0.2126f, 0.7152f, 0.0722f, 0f, 0f,
                 0f, 0f, 0f, 0f, 0f,
                 0f, 0f, 0f, 0f, 0f,
+                0f, 0f, 0f, 1f, 0f
+            )))
+        }
+        FilterMode.DEUTERANOPIA -> {
+            // Zöld-gyengeség korrekciós mátrix (Daltonization)
+            matrix.set(ColorMatrix(floatArrayOf(
+                0.367f, 0.861f, -0.228f, 0f, 0f,
+                0.280f, 0.673f, 0.047f, 0f, 0f,
+                -0.012f, 0.043f, 0.969f, 0f, 0f,
+                0f, 0f, 0f, 1f, 0f
+            )))
+        }
+        FilterMode.PROTANOPIA -> {
+            // Piros-gyengeség korrekciós mátrix (Daltonization)
+            matrix.set(ColorMatrix(floatArrayOf(
+                0.152f, 1.052f, -0.205f, 0f, 0f,
+                0.115f, 0.786f, 0.099f, 0f, 0f,
+                -0.004f, -0.048f, 1.053f, 0f, 0f,
+                0f, 0f, 0f, 1f, 0f
+            )))
+        }
+        FilterMode.TRITANOPIA -> {
+            // Kék-gyengeség korrekciós mátrix (Daltonization)
+            matrix.set(ColorMatrix(floatArrayOf(
+                1.013f, -0.016f, 0.003f, 0f, 0f,
+                0.008f, 1.011f, -0.019f, 0f, 0f,
+                0.008f, 0.252f, 0.741f, 0f, 0f,
                 0f, 0f, 0f, 1f, 0f
             )))
         }

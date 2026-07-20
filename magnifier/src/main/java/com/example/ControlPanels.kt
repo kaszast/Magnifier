@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -446,6 +447,21 @@ fun FiltersAndTuneTabContent(
                                             colors = listOf(Color.Red, Color.Black)
                                         )
                                     }
+                                    FilterMode.DEUTERANOPIA -> {
+                                        Brush.linearGradient(
+                                            colors = listOf(Color(0xFF81C784), Color.Black)
+                                        )
+                                    }
+                                    FilterMode.PROTANOPIA -> {
+                                        Brush.linearGradient(
+                                            colors = listOf(Color(0xFFE57373), Color.Black)
+                                        )
+                                    }
+                                    FilterMode.TRITANOPIA -> {
+                                        Brush.linearGradient(
+                                            colors = listOf(Color(0xFF64B5F6), Color.Black)
+                                        )
+                                    }
                                 },
                                 shape = CircleShape
                             )
@@ -577,7 +593,6 @@ fun FiltersAndTuneTabContent(
 
 @Composable
 fun SettingsTabContent(
-
     themeColor: Color,
     themeOptions: List<AppThemeColor>,
     currentThemeIndex: Int,
@@ -586,7 +601,13 @@ fun SettingsTabContent(
     onShowTutorial: () -> Unit,
     onShowTipJar: () -> Unit,
     currentLanguage: String,
-    onChangeLanguage: (String) -> Unit
+    onChangeLanguage: (String) -> Unit,
+    isHdrSupported: Boolean,
+    isHdrEnabled: Boolean,
+    onHdrEnabledChange: (Boolean) -> Unit,
+    isNightSupported: Boolean,
+    isNightEnabled: Boolean,
+    onNightEnabledChange: (Boolean) -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -752,6 +773,63 @@ fun SettingsTabContent(
                 )
             }
         }
+
+        // Kamera Módok (HDR / Éjszakai képjavítás)
+        if (isHdrSupported || isNightSupported) {
+            androidx.compose.material3.HorizontalDivider(
+                modifier = Modifier.padding(vertical = 4.dp),
+                color = Color(0xFF2E2C33)
+            )
+            Text(
+                text = stringResource(R.string.label_hdr_night),
+                color = themeColor,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (isHdrSupported) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(stringResource(R.string.setting_hdr), color = Color.White, fontSize = 13.sp)
+                        androidx.compose.material3.Switch(
+                            checked = isHdrEnabled,
+                            onCheckedChange = onHdrEnabledChange,
+                            colors = androidx.compose.material3.SwitchDefaults.colors(
+                                checkedThumbColor = Color.Black,
+                                checkedTrackColor = themeColor,
+                                uncheckedThumbColor = Color(0xFF5E5C64),
+                                uncheckedTrackColor = Color(0xFF111115)
+                            )
+                        )
+                    }
+                }
+                if (isNightSupported) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(stringResource(R.string.setting_night), color = Color.White, fontSize = 13.sp)
+                        androidx.compose.material3.Switch(
+                            checked = isNightEnabled,
+                            onCheckedChange = onNightEnabledChange,
+                            colors = androidx.compose.material3.SwitchDefaults.colors(
+                                checkedThumbColor = Color.Black,
+                                checkedTrackColor = themeColor,
+                                uncheckedThumbColor = Color(0xFF5E5C64),
+                                uncheckedTrackColor = Color(0xFF111115)
+                            )
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -780,6 +858,11 @@ fun CombinedZoomFiltersTuneTabContent(
     maxExposureIndex: Int,
     sharpenStrength: Float,
     onSharpenStrengthChange: (Float) -> Unit,
+    focusMode: String,
+    onFocusModeChange: (String) -> Unit,
+    manualFocusDistance: Float,
+    onManualFocusDistanceChange: (Float) -> Unit,
+    minFocusDistance: Float
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -837,14 +920,17 @@ fun CombinedZoomFiltersTuneTabContent(
 
         }
 
-        // 2. Szűrők (Balra, fix szélesség) és Expozíció/Kontraszt (Jobbra, weight=1f) side-by-side (magasság: 40.dp)
+        // 2. Szűrők (Balra, görgethető) és Expozíció/Kontraszt (Jobbra, weight=1f) side-by-side (magasság: 40.dp)
         Row(
             modifier = Modifier.fillMaxWidth().height(40.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Bal oldal: 5 szűrő gomb (méret: 34x40.dp)
+            // Bal oldal: szűrő gombok (méret: 34x40.dp)
             Row(
+                modifier = Modifier
+                    .weight(1.1f)
+                    .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -897,6 +983,21 @@ fun CombinedZoomFiltersTuneTabContent(
                                         FilterMode.RED -> {
                                             Brush.linearGradient(
                                                 colors = listOf(Color.Red, Color.Black)
+                                            )
+                                        }
+                                        FilterMode.DEUTERANOPIA -> {
+                                            Brush.linearGradient(
+                                                colors = listOf(Color(0xFF81C784), Color.Black)
+                                            )
+                                        }
+                                        FilterMode.PROTANOPIA -> {
+                                            Brush.linearGradient(
+                                                colors = listOf(Color(0xFFE57373), Color.Black)
+                                            )
+                                        }
+                                        FilterMode.TRITANOPIA -> {
+                                            Brush.linearGradient(
+                                                colors = listOf(Color(0xFF64B5F6), Color.Black)
                                             )
                                         }
                                     },
@@ -1058,6 +1159,95 @@ fun CombinedZoomFiltersTuneTabContent(
                 )
             }
         }
+
+        // 4. Csúszkasor 3: Fókusz (Balra: Módválasztó gombok, Jobbra: Manuális csúszka)
+        Row(
+            modifier = Modifier.fillMaxWidth().height(40.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Bal oldal: Fókusz Mód Választó (Auto / Locked / Manual)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                listOf("auto", "locked", "manual").forEach { mode ->
+                    val selected = focusMode == mode
+                    val icon = when (mode) {
+                        "auto" -> Icons.Default.CenterFocusStrong
+                        "locked" -> Icons.Default.Lock
+                        else -> Icons.Default.Tune
+                    }
+                    val label = when (mode) {
+                        "auto" -> stringResource(R.string.focus_auto)
+                        "locked" -> stringResource(R.string.focus_locked)
+                        else -> stringResource(R.string.focus_manual)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(width = 34.dp, height = 40.dp)
+                            .background(
+                                if (selected) Color(0xFF231D30) else Color(0xFF111115),
+                                RoundedCornerShape(10.dp)
+                            )
+                            .border(
+                                1.dp,
+                                if (selected) themeColor else Color(0xFF2E2C33),
+                                RoundedCornerShape(10.dp)
+                            )
+                            .clickable { onFocusModeChange(mode) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = label,
+                            tint = if (selected) themeColor else Color(0xFF5E5C64),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(4.dp))
+
+            // Jobb oldal: Fókusztávolság csúszka (csak ha manual módban van és támogatott)
+            val isManualEnabled = focusMode == "manual" && minFocusDistance > 0f
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Adjust,
+                    contentDescription = null,
+                    tint = if (isManualEnabled) themeColor else Color(0xFF5E5C64),
+                    modifier = Modifier.size(20.dp)
+                )
+                Slider(
+                    value = manualFocusDistance,
+                    onValueChange = onManualFocusDistanceChange,
+                    valueRange = 0f..minFocusDistance.coerceAtLeast(0.1f),
+                    enabled = isManualEnabled,
+                    colors = SliderDefaults.colors(
+                        activeTrackColor = themeColor,
+                        thumbColor = themeColor,
+                        inactiveTrackColor = Color(0xFF1B1A21),
+                        disabledActiveTrackColor = Color(0xFF3E3D45),
+                        disabledThumbColor = Color(0xFF3E3D45),
+                        disabledInactiveTrackColor = Color(0xFF1B1A21)
+                    ),
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = if (isManualEnabled) String.format("%.1f", manualFocusDistance) else "Auto",
+                    color = if (isManualEnabled) Color.White else Color(0xFF5E5C64),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.widthIn(min = 28.dp),
+                    textAlign = TextAlign.End
+                )
+            }
+        }
     }
 }
 
@@ -1089,7 +1279,12 @@ fun CombinedZoomFiltersTuneTabContentPreviewLive() {
             minExposureIndex = -4,
             maxExposureIndex = 4,
             sharpenStrength = 0.0f,
-            onSharpenStrengthChange = {}
+            onSharpenStrengthChange = {},
+            focusMode = "auto",
+            onFocusModeChange = {},
+            manualFocusDistance = 0f,
+            onManualFocusDistanceChange = {},
+            minFocusDistance = 10f
         )
     }
 }
@@ -1122,7 +1317,12 @@ fun CombinedZoomFiltersTuneTabContentPreviewFrozen() {
             minExposureIndex = -4,
             maxExposureIndex = 4,
             sharpenStrength = 5.0f,
-            onSharpenStrengthChange = {}
+            onSharpenStrengthChange = {},
+            focusMode = "manual",
+            onFocusModeChange = {},
+            manualFocusDistance = 5.0f,
+            onManualFocusDistanceChange = {},
+            minFocusDistance = 10f
         )
     }
 }
@@ -1147,7 +1347,13 @@ fun SettingsTabContentPreview() {
             onShowTutorial = {},
             onShowTipJar = {},
             currentLanguage = "hu",
-            onChangeLanguage = {}
+            onChangeLanguage = {},
+            isHdrSupported = true,
+            isHdrEnabled = false,
+            onHdrEnabledChange = {},
+            isNightSupported = true,
+            isNightEnabled = true,
+            onNightEnabledChange = {}
         )
     }
 }

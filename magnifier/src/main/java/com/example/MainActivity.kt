@@ -155,6 +155,19 @@ class MainActivity : ComponentActivity() {
      * "eldobja" és újraépíti a képernyőt). A `?` azt jelenti, hogy null is lehet
      * — az app első indításakor nincs mit visszatölteni, ezért null.
      */
+    val zoomEventFlow = kotlinx.coroutines.flow.MutableSharedFlow<ZoomEvent>(extraBufferCapacity = 1)
+
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        if (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP) {
+            zoomEventFlow.tryEmit(ZoomEvent.ZOOM_IN)
+            return true
+        } else if (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN) {
+            zoomEventFlow.tryEmit(ZoomEvent.ZOOM_OUT)
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -171,7 +184,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = Color.Black
                 ) {
-                    MagnifierApp(launchCount = launchCount)
+                    MagnifierApp(launchCount = launchCount, zoomEventFlow = zoomEventFlow)
                 }
             }
         }
@@ -189,7 +202,7 @@ class MainActivity : ComponentActivity() {
  */
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun MagnifierApp(launchCount: Int) {
+fun MagnifierApp(launchCount: Int, zoomEventFlow: kotlinx.coroutines.flow.SharedFlow<ZoomEvent>) {
     // LocalContext.current: a Context egy "kulcs" az Android-rendszerhez
     // (erőforrások, rendszer-szolgáltatások eléréséhez). A LocalContext egy
     // CompositionLocal: olyan érték, amit nem paraméterként adunk át, hanem a
@@ -261,7 +274,7 @@ fun MagnifierApp(launchCount: Int) {
     }
 
     if (isPermissionGranted) {
-        MagnifierMainScreen(launchCount = launchCount)
+        MagnifierMainScreen(launchCount = launchCount, zoomEventFlow = zoomEventFlow)
     } else {
         // Az engedélykérő képernyő gombja ugyanazt a rendszer-dialógust indítja.
         // A gomb-eseményt lambda-ként (callback) adjuk át lefelé.
@@ -367,5 +380,9 @@ fun PermissionRequiredScreen(onRequestPermission: () -> Unit) {
             }
         }
     }
+}
+
+enum class ZoomEvent {
+    ZOOM_IN, ZOOM_OUT
 }
 

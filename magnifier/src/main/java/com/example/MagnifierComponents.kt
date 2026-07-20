@@ -448,6 +448,7 @@ fun ActionButtonsRow(
     onSave: () -> Unit,
     onToggleFreeze: () -> Unit,
     onShare: () -> Unit,
+    onOcrClick: () -> Unit,
 ) {
     // A gombokat vízszintes Row-ba tesszük, teljes szélességben (fillMaxWidth).
     // Arrangement.SpaceAround: a szabad helyet egyenletesen osztja el a gombok között
@@ -457,36 +458,60 @@ fun ActionButtonsRow(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Zseblámpa gomb. Bekapcsolt állapotban (torchEnabled) a háttér és a keret a
-        // témaszínre vált, az ikon FlashOn/FlashOff-ra, jelezve az aktív állapotot.
-        //
-        // .testTag("torch_button"): teszt-azonosító. Ez a Modifier semmit nem változtat
-        // a kinézeten, de "címkét" ad az elemnek, amivel az UI-tesztek (pl. Compose
-        // testing / Espresso) egyértelműen megtalálják és rákattintanak — anélkül, hogy
-        // a felhasználónak látható szövegre kellene támaszkodniuk.
-        // Torch Button (compact circular glass button)
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(
-                    if (torchEnabled) themeColor else Color(0xFF1F1E26),
-                    CircleShape
+        // Ha fagyasztott kép van, OCR (szövegfelismerés) gombot mutatunk a lámpa helyett
+        if (isFrozen) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(Color(0xFF1F1E26), CircleShape)
+                    .border(
+                        1.dp,
+                        Color(0xFF2E2C33),
+                        CircleShape
+                    )
+                    .clickable { onOcrClick() }
+                    .testTag("ocr_button"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.TextSnippet,
+                    contentDescription = stringResource(R.string.ocr_button),
+                    tint = themeColor,
+                    modifier = Modifier.size(18.dp)
                 )
-                .border(
-                    1.dp,
-                    if (torchEnabled) themeColor else Color(0xFF2E2C33),
-                    CircleShape
+            }
+        } else {
+            // Zseblámpa gomb. Bekapcsolt állapotban (torchEnabled) a háttér és a keret a
+            // témaszínre vált, az ikon FlashOn/FlashOff-ra, jelezve az aktív állapotot.
+            //
+            // .testTag("torch_button"): teszt-azonosító. Ez a Modifier semmit nem változtat
+            // a kinézeten, de "címkét" ad az elemnek, amivel az UI-tesztek (pl. Compose
+            // testing / Espresso) egyértelműen megtalálják és rákattintanak — anélkül, hogy
+            // a felhasználónak látható szövegre kellene támaszkodniuk.
+            // Torch Button (compact circular glass button)
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        if (torchEnabled) themeColor else Color(0xFF1F1E26),
+                        CircleShape
+                    )
+                    .border(
+                        1.dp,
+                        if (torchEnabled) themeColor else Color(0xFF2E2C33),
+                        CircleShape
+                    )
+                    .clickable { onToggleTorch() }
+                    .testTag("torch_button"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (torchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                    contentDescription = stringResource(R.string.cd_torch),
+                    tint = if (torchEnabled) Color.Black else Color.White,
+                    modifier = Modifier.size(18.dp)
                 )
-                .clickable { onToggleTorch() }
-                .testTag("torch_button"),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = if (torchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
-                contentDescription = stringResource(R.string.cd_torch),
-                tint = if (torchEnabled) Color.Black else Color.White,
-                modifier = Modifier.size(18.dp)
-            )
+            }
         }
 
         // Save Button (compact circular glass button)

@@ -164,5 +164,31 @@ suspend fun awaitCapturedJpeg(imageCapture: ImageCapture, context: Context): Cap
         )
     }
 
+@androidx.annotation.OptIn(androidx.camera.camera2.interop.ExperimentalCamera2Interop::class)
+fun applyFocusSettings(
+    camera: androidx.camera.core.Camera,
+    focusMode: String,
+    focusDistance: Float
+) {
+    val cameraControl = camera.cameraControl
+    val camera2CameraControl = androidx.camera.camera2.interop.Camera2CameraControl.from(cameraControl)
+    when (focusMode) {
+        "auto" -> {
+            camera2CameraControl.clearCaptureRequestOptions()
+        }
+        "locked" -> {
+            camera2CameraControl.captureRequestOptions = androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
+                .setCaptureRequestOption(android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE, android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE_OFF)
+                .build()
+        }
+        "manual" -> {
+            camera2CameraControl.captureRequestOptions = androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
+                .setCaptureRequestOption(android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE, android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE_OFF)
+                .setCaptureRequestOption(android.hardware.camera2.CaptureRequest.LENS_FOCUS_DISTANCE, focusDistance)
+                .build()
+        }
+    }
+}
+
 
 

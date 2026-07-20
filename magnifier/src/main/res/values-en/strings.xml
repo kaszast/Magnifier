@@ -27,6 +27,29 @@
     <string name="filter_yellow_desc">Ideal contrast for low vision</string>
     <string name="filter_red">Red</string>
     <string name="filter_red_desc">Night vision preservation</string>
+    <string name="filter_deuteranopia">Deuteranopia</string>
+    <string name="filter_deuteranopia_desc">Green-blindness correction</string>
+    <string name="filter_protanopia">Protanopia</string>
+    <string name="filter_protanopia_desc">Red-blindness correction</string>
+    <string name="filter_tritanopia">Tritanopia</string>
+    <string name="filter_tritanopia_desc">Blue-blindness correction</string>
+
+    <string name="focus_auto">Auto Focus</string>
+    <string name="focus_locked">Locked Focus</string>
+    <string name="focus_manual">Manual Focus</string>
+    <string name="label_focus">Focus</string>
+
+    <string name="ocr_button">Text Reader (OCR)</string>
+    <string name="ocr_dialog_title">Recognition Result</string>
+    <string name="ocr_copy">Copy</string>
+    <string name="ocr_speak">Speak</string>
+    <string name="ocr_stop">Stop</string>
+    <string name="ocr_no_text">No recognizable text found on the image.</string>
+    <string name="ocr_processing">Recognition in progress&#8230;</string>
+
+    <string name="setting_hdr">HDR Mode</string>
+    <string name="setting_night">Night Boost</string>
+    <string name="label_hdr_night">Camera Modes</string>
 
     <string name="theme_purple">Purple</string>
     <string name="theme_green">Green</string>

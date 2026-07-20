@@ -278,8 +278,9 @@ fun NoCameraScreen() {
 // bármely olvasott állapot változik. Ezért itt NEM lehet sima lokális változóba tenni
 // olyan értéket, aminek túl kell élnie egy recompositiont — arra való a remember { } és
 // a rememberSaveable { } (lásd az ÁLLAPOTOK szekció részletes magyarázatát).
+@androidx.annotation.OptIn(androidx.camera.camera2.interop.ExperimentalCamera2Interop::class)
 @Composable
-fun MagnifierMainScreen(launchCount: Int = 0) {
+fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.flow.SharedFlow<ZoomEvent>? = null) {
     // --- Alap-függőségek (dependencies), amiket a Compose-fából "szedünk le" ---
 
     // A Context sok Android API-hoz kell (csomaginfó, kamera, fájlmentés...).
@@ -442,11 +443,27 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
     var minExposureIndex by remember { mutableStateOf(-4) }
     var maxExposureIndex by remember { mutableStateOf(4) }
 
+    // --- Fókusz módok ---
+    var focusMode by rememberSaveable { mutableStateOf("auto") } // "auto", "locked", "manual"
+    var manualFocusDistance by rememberSaveable { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    var minFocusDistance by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+
+    // --- Kamera Módok (HDR / Night) ---
+    var isHdrSupported by remember { mutableStateOf(false) }
+    var isHdrEnabled by rememberSaveable { mutableStateOf(false) }
+    var isNightSupported by remember { mutableStateOf(false) }
+    var isNightEnabled by rememberSaveable { mutableStateOf(false) }
+
     // --- Fagyasztás (freeze) és feldolgozás-jelző ---
     // isProcessing = épp fut-e háttérfeldolgozás (spinner overlay-hez) — nem kell túlélnie forgatást.
     // isFrozen = kimerevített módban vagyunk-e; Saveable, hogy forgatás után is fagyasztva maradjon.
     var isProcessing by remember { mutableStateOf(false) }
     var isFrozen by rememberSaveable { mutableStateOf(false) }
+
+    // --- OCR és TTS állapotok ---
+    var ocrResultText by remember { mutableStateOf("") }
+    var showOcrDialog by remember { mutableStateOf(false) }
+    var tts: android.speech.tts.TextToSpeech? by remember { mutableStateOf(null) }
 
     // derivedStateOf: SZÁRMAZTATOTT állapot. Akkor és csak akkor számol újra, ha a benne OLVASOTT
     // állapotok (isFrozen, minZoom) tényleg változnak — és a rá figyelő UI is csak ekkor komponálódik
@@ -580,6 +597,40 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
         frozenOffset = clampPan(frozenOffset, frozenScale, viewportSize)
     }
 
+    LaunchedEffect(zoomEventFlow) {
+        zoomEventFlow?.collect { event ->
+            if (isFrozen) {
+                val step = 0.5f
+                frozenScale = if (event == ZoomEvent.ZOOM_IN) {
+                    (frozenScale + step).coerceAtMost(sliderMax)
+                } else {
+                    (frozenScale - step).coerceAtLeast(sliderMin)
+                }
+            } else {
+                val currentTotal = liveZoomRatio * extraDigitalZoom
+                val step = 0.5f
+                val target = if (event == ZoomEvent.ZOOM_IN) {
+                    (currentTotal + step).coerceAtMost(sliderMax)
+                } else {
+                    (currentTotal - step).coerceAtLeast(sliderMin)
+                }
+                applyTotalZoom(target, false)
+            }
+        }
+    }
+
+    LaunchedEffect(focusMode, manualFocusDistance, camera) {
+        val cam = camera ?: return@LaunchedEffect
+        applyFocusSettings(cam, focusMode, manualFocusDistance)
+    }
+
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            tts?.stop()
+            tts?.shutdown()
+        }
+    }
+
     // --- UI-overlay / státusz állapotok ---
     var activeTab by rememberSaveable { mutableStateOf(0) } // 0: Nagyítás, 1: Szűrők és Korrekció, 2: Beállítások
     // Az egyedi (Compose-rajzolt) "toast" értesítés ikonja/alikonja/színe és láthatósága.
@@ -593,6 +644,55 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
 
     // Az élő minimap-hoz periodikusan lekapott thumbnail (kicsinyített pillanatkép a previewból).
     var liveThumbnailBitmap by remember { mutableStateOf<Bitmap?>(null) }
+
+    fun speakText(text: String, language: String) {
+        if (tts == null) {
+            tts = android.speech.tts.TextToSpeech(context) { status ->
+                if (status == android.speech.tts.TextToSpeech.SUCCESS) {
+                    val locale = if (language == "hu") java.util.Locale("hu") else java.util.Locale.ENGLISH
+                    val result = tts?.setLanguage(locale)
+                    if (result == android.speech.tts.TextToSpeech.LANG_MISSING_DATA || result == android.speech.tts.TextToSpeech.LANG_NOT_SUPPORTED) {
+                        tts?.setLanguage(java.util.Locale.ENGLISH)
+                    }
+                    tts?.speak(text, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, null)
+                } else {
+                    android.util.Log.e("Magnifier", "TTS Initialization failed")
+                }
+            }
+        } else {
+            val locale = if (language == "hu") java.util.Locale("hu") else java.util.Locale.ENGLISH
+            tts?.setLanguage(locale)
+            tts?.speak(text, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, null)
+        }
+    }
+
+    fun runOcrOnBitmap(bmp: Bitmap) {
+        isProcessing = true
+        val recognizer = com.google.mlkit.vision.text.TextRecognition.getClient(com.google.mlkit.vision.text.latin.TextRecognizerOptions.DEFAULT_OPTIONS)
+        val image = com.google.mlkit.vision.common.InputImage.fromBitmap(bmp, 0)
+        recognizer.process(image)
+            .addOnSuccessListener { visionText ->
+                isProcessing = false
+                val text = visionText.text
+                if (text.isNotBlank()) {
+                    ocrResultText = text
+                    showOcrDialog = true
+                } else {
+                    toastIcon = Icons.Default.TextSnippet
+                    toastSubIcon = Icons.Default.Warning
+                    toastColor = Color(0xFFFFB300) // amber yellow
+                    showSavedToast = true
+                }
+            }
+            .addOnFailureListener { e ->
+                isProcessing = false
+                android.util.Log.e("Magnifier", "OCR failed", e)
+                toastIcon = Icons.Default.TextSnippet
+                toastSubIcon = Icons.Default.Error
+                toastColor = Color(0xFFEF4444) // red
+                showSavedToast = true
+            }
+    }
 
     // Grab thumbnail dynamically and generate sharpened live overlay when digital zoom is active in live mode.
     // Az overlay kizárólag aktív élesítésnél jelenik meg: élesítés nélkül a natív preview
@@ -771,7 +871,7 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
     //                          indítja/állítja le a kamerát az Activity életciklusa szerint.
     //
     // A kulcs a selectedCameraIndex: kameraváltáskor újra lefut az egész bind-folyamat az új kamerára.
-    LaunchedEffect(selectedCameraIndex) {
+    LaunchedEffect(selectedCameraIndex, isHdrEnabled, isNightEnabled) {
         // Engedély nélkül nincs mit bindolni: jelezzük, hogy az ellenőrzés kész (a hívó ág ilyenkor
         // a NoCameraScreen-t mutatja), és korán kilépünk (return@LaunchedEffect a címkézett return).
         if (!hasCameraPermission(context)) {
@@ -811,13 +911,27 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                 }
                 .build()
 
+            // Lekérdezzük a kiterjesztéseket (HDR, Éjszakai képjavítás)
+            val extensionsManagerFuture = androidx.camera.extensions.ExtensionsManager.getInstanceAsync(context, cameraProvider)
+            val extensionsManager = awaitListenableFuture(extensionsManagerFuture, context)
+
+            isHdrSupported = extensionsManager.isExtensionAvailable(cameraSelector, androidx.camera.extensions.ExtensionMode.HDR)
+            isNightSupported = extensionsManager.isExtensionAvailable(cameraSelector, androidx.camera.extensions.ExtensionMode.NIGHT)
+
+            var finalCameraSelector = cameraSelector
+            if (isHdrEnabled && isHdrSupported) {
+                finalCameraSelector = extensionsManager.getExtensionEnabledCameraSelector(cameraSelector, androidx.camera.extensions.ExtensionMode.HDR)
+            } else if (isNightEnabled && isNightSupported) {
+                finalCameraSelector = extensionsManager.getExtensionEnabledCameraSelector(cameraSelector, androidx.camera.extensions.ExtensionMode.NIGHT)
+            }
+
             isCameraBindingFailed = false
             // A bind előtt MINDIG unbindAll: egy lifecycle-owner-hez ne kötődjön kétszer ugyanaz a use case,
             // különben ütközés/hiba lehet (pl. kameraváltáskor a régi kötést el kell engedni).
             cameraProvider.unbindAll()
             val cameraInstance = cameraProvider.bindToLifecycle(
                 lifecycleOwner,
-                cameraSelector,
+                finalCameraSelector,
                 preview,
                 localImageCapture
             )
@@ -825,6 +939,17 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
             // amelyek visszaállítják rá a zoom/vaku/expozíció beállításokat.
             camera = cameraInstance
             previewUseCase = preview
+
+            // Lekérdezzük a minimum fókusztávolságot a manuális fókusz csúszkához
+            try {
+                val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as android.hardware.camera2.CameraManager
+                val cameraId = androidx.camera.camera2.interop.Camera2CameraInfo.from(cameraInstance.cameraInfo).cameraId
+                val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+                minFocusDistance = characteristics.get(android.hardware.camera2.CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE) ?: 0.0f
+            } catch (e: Exception) {
+                android.util.Log.e("Magnifier", "Failed to query LENS_INFO_MINIMUM_FOCUS_DISTANCE", e)
+                minFocusDistance = 0f
+            }
 
             // OBSERVER a kamera zoom-képességeire. A zoomState egy LiveData: a .observe(lifecycleOwner) { }
             // callback minden változáskor lefut, és a lifecycleOwner-höz van kötve (automatikusan leiratkozik).
@@ -1218,7 +1343,12 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                                 minExposureIndex = minExposureIndex,
                                 maxExposureIndex = maxExposureIndex,
                                 sharpenStrength = sharpenStrength,
-                                onSharpenStrengthChange = { sharpenStrength = it }
+                                onSharpenStrengthChange = { sharpenStrength = it },
+                                focusMode = focusMode,
+                                onFocusModeChange = { focusMode = it },
+                                manualFocusDistance = manualFocusDistance,
+                                onManualFocusDistanceChange = { manualFocusDistance = it },
+                                minFocusDistance = minFocusDistance
                             )
                             1 -> SettingsTabContent(
 
@@ -1251,7 +1381,19 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                                     showTipJar = true
                                 },
                                 currentLanguage = currentLanguage,
-                                onChangeLanguage = onChangeLanguage
+                                onChangeLanguage = onChangeLanguage,
+                                isHdrSupported = isHdrSupported,
+                                isHdrEnabled = isHdrEnabled,
+                                onHdrEnabledChange = { enabled ->
+                                    isHdrEnabled = enabled
+                                    if (enabled) isNightEnabled = false
+                                },
+                                isNightSupported = isNightSupported,
+                                isNightEnabled = isNightEnabled,
+                                onNightEnabledChange = { enabled ->
+                                    isNightEnabled = enabled
+                                    if (enabled) isHdrEnabled = false
+                                }
                             )
                         }
                     }
@@ -1401,6 +1543,17 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                                 toastIcon = Icons.Default.Share
                                 toastSubIcon = Icons.Default.Warning
                                 toastColor = Color(0xFFFFB300) // amber yellow
+                                showSavedToast = true
+                            }
+                        },
+                        onOcrClick = {
+                            val bmp = frozenBitmap
+                            if (bmp != null) {
+                                runOcrOnBitmap(bmp)
+                            } else {
+                                toastIcon = Icons.Default.TextSnippet
+                                toastSubIcon = Icons.Default.Warning
+                                toastColor = Color(0xFFFFB300)
                                 showSavedToast = true
                             }
                         }
@@ -1558,6 +1711,110 @@ fun MagnifierMainScreen(launchCount: Int = 0) {
                             // Mock sikeres fizetés utáni szimulált események (ha szükséges)
                         }
                     }
+                )
+            }
+
+            // OCR (Szövegfelismerés) Eredmény Dialog
+            if (showOcrDialog) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = {
+                        showOcrDialog = false
+                        tts?.stop()
+                    },
+                    title = {
+                        Text(
+                            text = stringResource(R.string.ocr_dialog_title),
+                            color = themeColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
+                        )
+                    },
+                    text = {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 200.dp)
+                                    .background(Color(0xFF111115), RoundedCornerShape(8.dp))
+                                    .border(1.dp, Color(0xFF2E2C33), RoundedCornerShape(8.dp))
+                                    .padding(12.dp)
+                                    .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                            ) {
+                                Text(
+                                    text = ocrResultText,
+                                    color = Color.White,
+                                    fontSize = 14.sp
+                                )
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                androidx.compose.material3.Button(
+                                    onClick = { speakText(ocrResultText, "hu") },
+                                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                        containerColor = themeColor,
+                                        contentColor = Color.Black
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.VolumeUp,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Magyar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                androidx.compose.material3.Button(
+                                    onClick = { speakText(ocrResultText, "en") },
+                                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                        containerColor = themeColor,
+                                        contentColor = Color.Black
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.VolumeUp,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("English", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                clipboard.setText(androidx.compose.ui.text.AnnotatedString(ocrResultText))
+                                toastIcon = Icons.Default.ContentCopy
+                                toastSubIcon = Icons.Default.CheckCircle
+                                toastColor = themeColor
+                                showSavedToast = true
+                            }
+                        ) {
+                            Text(stringResource(R.string.ocr_copy), color = themeColor)
+                        }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                showOcrDialog = false
+                                tts?.stop()
+                            }
+                        ) {
+                            Text(stringResource(R.string.action_close), color = Color(0xFFEF4444))
+                        }
+                    },
+                    containerColor = Color(0xFF1F1E26)
                 )
             }
         }
