@@ -450,6 +450,7 @@ fun ActionButtonsRow(
     onToggleFreeze: () -> Unit,
     onShare: () -> Unit,
     onOcrClick: () -> Unit,
+    onBarcodeClick: () -> Unit,
 ) {
     // A gombokat vízszintes Row-ba tesszük, teljes szélességben (fillMaxWidth).
     // Arrangement.SpaceAround: a szabad helyet egyenletesen osztja el a gombok között
@@ -459,7 +460,7 @@ fun ActionButtonsRow(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Ha fagyasztott kép van, OCR (szövegfelismerés) gombot mutatunk a lámpa helyett
+        // Ha fagyasztott kép van, OCR (szövegfelismerés) és QR/Vonalkód gombot mutatunk a lámpa helyett
         if (isFrozen) {
             Box(
                 modifier = Modifier
@@ -477,6 +478,27 @@ fun ActionButtonsRow(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.TextSnippet,
                     contentDescription = stringResource(R.string.ocr_button),
+                    tint = themeColor,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(Color(0xFF1F1E26), CircleShape)
+                    .border(
+                        1.dp,
+                        Color(0xFF2E2C33),
+                        CircleShape
+                    )
+                    .clickable { onBarcodeClick() }
+                    .testTag("barcode_button"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.QrCodeScanner,
+                    contentDescription = "QR / Vonalkód",
                     tint = themeColor,
                     modifier = Modifier.size(18.dp)
                 )

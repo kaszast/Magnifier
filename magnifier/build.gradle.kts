@@ -12,8 +12,8 @@ android {
     applicationId = "com.aistudio.magnifier.nwzkpq"
     minSdk = 24
     targetSdk = 35
-    versionCode = 44
-    versionName = "0.93"
+    versionCode = 46
+    versionName = "0.94barcode"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -75,6 +75,7 @@ dependencies {
   // implementation(libs.play.services.ads)
   implementation(libs.play.billing)
   implementation(libs.play.services.mlkit.text.recognition)
+  implementation(libs.play.services.mlkit.barcode.scanning)
   implementation(libs.androidx.camera.extensions)
 
   // implementation(libs.androidx.navigation.compose)

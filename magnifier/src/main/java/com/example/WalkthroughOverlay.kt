@@ -308,6 +308,7 @@ private fun getIconForEmoji(emoji: String): ImageVector {
         "💾" -> Icons.Default.Save
         "📤" -> Icons.Default.Share
         "📝" -> Icons.AutoMirrored.Filled.TextSnippet
+        "🔳" -> Icons.Default.QrCodeScanner
         "🔍" -> Icons.Default.ZoomIn
         "☀️" -> Icons.Default.Brightness5
         "🌗" -> Icons.Default.Contrast
@@ -327,7 +328,7 @@ private fun parseOnboardingLines(text: String): List<ParsedLine> {
     val lines = text.split("\n")
     return lines.mapNotNull { line ->
         if (line.isBlank()) return@mapNotNull null
-        val emojis = listOf("⚡", "⏸️", "⏸", "💾", "📤", "📝", "🔍", "☀️", "🌗", "📐", "🎯", "⚙️", "⚙", "🌈", "🌐", "🌟")
+        val emojis = listOf("⚡", "⏸️", "⏸", "💾", "📤", "📝", "🔳", "🔍", "☀️", "🌗", "📐", "🎯", "⚙️", "⚙", "🌈", "🌐", "🌟")
         val foundEmoji = emojis.firstOrNull { line.startsWith(it) } ?: ""
         val remaining = line.substring(foundEmoji.length).trim()
         val colonIndex = remaining.indexOf(":")

@@ -100,17 +100,17 @@
 
     <!-- Walkthrough / Útmutató -->
     <string name="walkthrough_title_1">1. Nagyítás</string>
-    <string name="walkthrough_body_1">Használd a csúszkát a kép nagyításához. A szoftveres zoom automatikusan bekapcsol a hardveres határ felett.</string>
+    <string name="walkthrough_body_1">Használd a csúszkát a kép nagyításához. A szoftveres zoom automatikusan bekapcsol a hardveres határ felett. A képstabilizáció csökkenti a kézremegést.</string>
     <string name="walkthrough_title_2">2. Szűrők és Élesítés</string>
     <string name="walkthrough_body_2">A Szűrők és Korrekció füleken javíthatod a szöveg olvashatóságát akadálymentesítési színszűrőkkel, kontraszttal és élesítéssel.</string>
     <string name="walkthrough_title_3">3. Kimerevítés és Mentés</string>
     <string name="walkthrough_body_3">A középső nagy gombbal kimerevítheted a képet a kényelmes olvasáshoz. A feljavított képet elmentheted vagy megoszthatod másokkal.</string>
     <string name="walkthrough_title_4">4. Szövegolvasó &#38; Felolvasás</string>
-    <string name="walkthrough_body_4">Kimerevített képnél az OCR gombbal felismerheted a szöveget, kimásolhatod a vágólapra, vagy felolvastathatod hangosan.</string>
+    <string name="walkthrough_body_4">Kimerevített képnél az OCR gombbal felismerheted a szöveget, vagy a QR gombbal beolvashatsz QR- és vonalkódokat.</string>
     <string name="walkthrough_title_5">5. Fókusz &#38; Kamera módok</string>
-    <string name="walkthrough_body_5">Válassz manuális fókuszt a tűéles képért. Kapcsolj be HDR vagy Éjszakai képjavítást a Beállításokban!</string>
+    <string name="walkthrough_body_5">Válassz manuális fókuszt a tűéles képért. A sikeres fókuszálást rezgéssel jelezzük. Kapcsolj be HDR vagy Éjszakai képjavítást a Beállításokban!</string>
     <string name="walkthrough_title_6">6. Fő funkciók ikonjai</string>
-    <string name="walkthrough_body_6">⚡ Vaku: Gyenge fényviszonyokhoz.\n⏸️ Kimerevítés: Megállítja a kameraképet a könnyebb olvasásért.\n💾 Mentés: A feljavított kép mentése a galériába.\n📤 Megosztás: Kép közvetlen küldése másoknak.\n📝 Szövegolvasó (OCR): Szövegek felismerése és felolvasása.</string>
+    <string name="walkthrough_body_6">⚡ Vaku: Gyenge fényviszonyokhoz.\n⏸️ Kimerevítés: Megállítja a kameraképet a könnyebb olvasásért.\n💾 Mentés: A feljavított kép mentése a galériába.\n📤 Megosztás: Kép közvetlen küldése másoknak.\n📝 Szövegolvasó (OCR): Szövegek felismerése és felolvasása.\n🔳 QR/Vonalkód: QR-kódok és vonalkódok offline beolvasása.</string>
     <string name="walkthrough_title_7">7. Képjavítás &#38; Csúszkák</string>
     <string name="walkthrough_body_7">🔍 Zoom csúszka: Kép nagyítása logaritmikus, finom skálán.\n☀️ Fényerő / Expozíció: Kép világosítása (érintésre visszaáll 0-ra).\n🌗 Kontraszt csúszka: Szöveg kontrasztjának növelése (érintésre visszaáll 1.0-ra).\n📐 Élesítés: Betűk körvonalának javítása (érintésre visszaáll 0.0-ra).</string>
     <string name="walkthrough_title_8">8. Fókusz &#38; Beállítások</string>

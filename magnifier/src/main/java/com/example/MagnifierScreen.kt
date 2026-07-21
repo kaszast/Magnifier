@@ -434,6 +434,10 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
     // --- OCR és TTS állapotok ---
     var ocrResultText by remember { mutableStateOf("") }
     var showOcrDialog by remember { mutableStateOf(false) }
+    var qrResultText by remember { mutableStateOf("") }
+    var qrResultType by remember { mutableStateOf("") }
+    var isQrUrl by remember { mutableStateOf(false) }
+    var showQrDialog by remember { mutableStateOf(false) }
     var tts: android.speech.tts.TextToSpeech? by remember { mutableStateOf(null) }
 
     // derivedStateOf: SZÁRMAZTATOTT állapot. Akkor és csak akkor számol újra, ha a benne OLVASOTT
@@ -590,15 +594,32 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
         }
     }
 
+    val view = androidx.compose.ui.platform.LocalView.current
     LaunchedEffect(focusMode, manualFocusDistance, camera) {
         val cam = camera ?: return@LaunchedEffect
         applyFocusSettings(cam, focusMode, manualFocusDistance)
         if (focusMode == "auto") {
             try {
-                cam.cameraControl.cancelFocusAndMetering()
+                val factory = androidx.camera.core.SurfaceOrientedMeteringPointFactory(1f, 1f)
+                val point = factory.createPoint(0.5f, 0.5f)
+                val action = androidx.camera.core.FocusMeteringAction.Builder(point, androidx.camera.core.FocusMeteringAction.FLAG_AF)
+                    .build()
+                val future = cam.cameraControl.startFocusAndMetering(action)
+                future.addListener({
+                    try {
+                        val result = future.get()
+                        if (result.isFocusSuccessful) {
+                            view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                        }
+                    } catch (e: Exception) {
+                        // Ignoráljuk a kivételeket
+                    }
+                }, androidx.core.content.ContextCompat.getMainExecutor(context))
             } catch (e: Exception) {
-                android.util.Log.e("Magnifier", "Failed to cancel focus lock", e)
+                android.util.Log.e("Magnifier", "Failed to start focus scan", e)
             }
+        } else if (focusMode == "manual") {
+            view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
         }
     }
 
@@ -666,6 +687,45 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                 isProcessing = false
                 android.util.Log.e("Magnifier", "OCR failed", e)
                 toastIcon = Icons.AutoMirrored.Filled.TextSnippet
+                toastSubIcon = Icons.Default.Error
+                toastColor = Color(0xFFEF4444) // red
+                showSavedToast = true
+            }
+    }
+
+    fun runBarcodeScanner(bmp: Bitmap) {
+        isProcessing = true
+        val scanner = com.google.mlkit.vision.barcode.BarcodeScanning.getClient()
+        val image = com.google.mlkit.vision.common.InputImage.fromBitmap(bmp, 0)
+        scanner.process(image)
+            .addOnSuccessListener { barcodes ->
+                isProcessing = false
+                if (barcodes.isNotEmpty()) {
+                    val barcode = barcodes[0]
+                    val raw = barcode.rawValue ?: ""
+                    qrResultText = barcode.displayValue ?: raw
+                    isQrUrl = barcode.valueType == com.google.mlkit.vision.barcode.common.Barcode.TYPE_URL
+                    qrResultType = when (barcode.valueType) {
+                        com.google.mlkit.vision.barcode.common.Barcode.TYPE_URL -> "Webcím (URL)"
+                        com.google.mlkit.vision.barcode.common.Barcode.TYPE_TEXT -> "Szöveg"
+                        com.google.mlkit.vision.barcode.common.Barcode.TYPE_PRODUCT -> "Termékkód"
+                        com.google.mlkit.vision.barcode.common.Barcode.TYPE_ISBN -> "Könyv (ISBN)"
+                        com.google.mlkit.vision.barcode.common.Barcode.TYPE_WIFI -> "WiFi Hálózat"
+                        com.google.mlkit.vision.barcode.common.Barcode.TYPE_CONTACT_INFO -> "Kapcsolati adatok"
+                        else -> "Vonalkód / QR-kód"
+                    }
+                    showQrDialog = true
+                } else {
+                    toastIcon = Icons.Default.QrCodeScanner
+                    toastSubIcon = Icons.Default.Warning
+                    toastColor = Color(0xFFFFB300) // amber yellow
+                    showSavedToast = true
+                }
+            }
+            .addOnFailureListener { e ->
+                isProcessing = false
+                android.util.Log.e("Magnifier", "Barcode scanning failed", e)
+                toastIcon = Icons.Default.QrCodeScanner
                 toastSubIcon = Icons.Default.Error
                 toastColor = Color(0xFFEF4444) // red
                 showSavedToast = true
@@ -873,7 +933,17 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
             val index = selectedCameraIndex.coerceIn(0, cameraInfos.lastIndex)
             val selectedCameraInfo = cameraInfos[index]
 
-            val preview = Preview.Builder().build()
+            val previewBuilder = Preview.Builder()
+            val interopExtender = androidx.camera.camera2.interop.Camera2Interop.Extender(previewBuilder)
+            interopExtender.setCaptureRequestOption(
+                android.hardware.camera2.CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
+                android.hardware.camera2.CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_ON
+            )
+            interopExtender.setCaptureRequestOption(
+                android.hardware.camera2.CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
+                android.hardware.camera2.CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON
+            )
+            val preview = previewBuilder.build()
 
             // MINIMIZE_LATENCY: a fotó a lehető leggyorsabban készüljön el (a fagyasztás azonnaliságához),
             // a maximális minőség helyett a késleltetés minimalizálására optimalizál.
@@ -1429,7 +1499,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                                     // Háttérben natív felbontású still capture, ami megérkezéskor lecseréli a snapshotot
                                     val capture = imageCapture
                                     val targetAspect = if (bmp.height > 0) bmp.width.toFloat() / bmp.height.toFloat() else 0f
-                                    if (capture != null) {
+                                    if (capture != null && !isHdrEnabled && !isNightEnabled) {
                                         coroutineScope.launch {
                                             val jpeg = awaitCapturedJpeg(capture, context)
                                             val hiRes = jpeg?.let {
@@ -1489,6 +1559,17 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                                 runOcrOnBitmap(bmp)
                             } else {
                                 toastIcon = Icons.AutoMirrored.Filled.TextSnippet
+                                toastSubIcon = Icons.Default.Warning
+                                toastColor = Color(0xFFFFB300)
+                                showSavedToast = true
+                            }
+                        },
+                        onBarcodeClick = {
+                            val bmp = frozenBitmap
+                            if (bmp != null) {
+                                runBarcodeScanner(bmp)
+                            } else {
+                                toastIcon = Icons.Default.QrCodeScanner
                                 toastSubIcon = Icons.Default.Warning
                                 toastColor = Color(0xFFFFB300)
                                 showSavedToast = true
@@ -1763,6 +1844,162 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                                     val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                         type = "text/plain"
                                         putExtra(Intent.EXTRA_TEXT, ocrResultText)
+                                    }
+                                    context.startActivity(Intent.createChooser(shareIntent, null))
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = stringResource(R.string.cd_share),
+                                    tint = themeColor,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    },
+                    containerColor = Color(0xFF1F1E26)
+                )
+            }
+
+            // QR/Vonalkód Eredmény Dialog
+            if (showQrDialog) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = {
+                        showQrDialog = false
+                        tts?.stop()
+                    },
+                    text = {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = qrResultType,
+                                color = themeColor,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                            
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 200.dp)
+                                    .background(Color(0xFF111115), RoundedCornerShape(8.dp))
+                                    .border(1.dp, Color(0xFF2E2C33), RoundedCornerShape(8.dp))
+                                    .padding(12.dp)
+                                    .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                            ) {
+                                Text(
+                                    text = qrResultText,
+                                    color = Color.White,
+                                    fontSize = 14.sp
+                                )
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = { speakText(qrResultText, "hu") },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = themeColor,
+                                        contentColor = Color.Black
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Magyar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                Button(
+                                    onClick = { speakText(qrResultText, "en") },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = themeColor,
+                                        contentColor = Color.Black
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("English", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+                        val context = androidx.compose.ui.platform.LocalContext.current
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceAround,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    showQrDialog = false
+                                    tts?.stop()
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = stringResource(R.string.action_close),
+                                    tint = Color(0xFFEF4444),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+
+                            if (isQrUrl) {
+                                IconButton(
+                                    onClick = {
+                                        try {
+                                            val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(qrResultText))
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            android.util.Log.e("Magnifier", "Failed to open URL", e)
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.OpenInBrowser,
+                                        contentDescription = "Megnyitás",
+                                        tint = themeColor,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    clipboard.setText(androidx.compose.ui.text.AnnotatedString(qrResultText))
+                                    toastIcon = Icons.Default.QrCodeScanner
+                                    toastSubIcon = Icons.Default.CheckCircle
+                                    toastColor = themeColor
+                                    showSavedToast = true
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ContentCopy,
+                                    contentDescription = stringResource(R.string.ocr_copy),
+                                    tint = themeColor,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_TEXT, qrResultText)
                                     }
                                     context.startActivity(Intent.createChooser(shareIntent, null))
                                 }

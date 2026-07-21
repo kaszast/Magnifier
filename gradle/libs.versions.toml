@@ -42,6 +42,7 @@ googleServices = "4.5.0"
 playServicesAds = "25.4.0"
 playBilling = "7.0.0"
 playServicesMlkitTextRecognition = "19.0.1"
+playServicesMlkitBarcodeScanning = "18.3.1"
 cameraExtensions = "1.5.0"
 
 
@@ -97,6 +98,7 @@ firebase-appcheck-recaptcha = { group = "com.google.firebase", name = "firebase-
 play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "playServicesAds" }
 play-billing = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "playBilling" }
 play-services-mlkit-text-recognition = { group = "com.google.android.gms", name = "play-services-mlkit-text-recognition", version.ref = "playServicesMlkitTextRecognition" }
+play-services-mlkit-barcode-scanning = { group = "com.google.android.gms", name = "play-services-mlkit-barcode-scanning", version.ref = "playServicesMlkitBarcodeScanning" }
 androidx-camera-extensions = { group = "androidx.camera", name = "camera-extensions", version.ref = "cameraExtensions" }
 
 
