@@ -470,6 +470,8 @@ fun CombinedZoomFiltersTuneTabContent(
         onSliderDraggingChange(isAnySliderDragging)
     }
 
+    val view = androidx.compose.ui.platform.LocalView.current
+
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween
@@ -494,6 +496,7 @@ fun CombinedZoomFiltersTuneTabContent(
                 value = currentZoomLog,
                 onValueChange = { newValue ->
                     val actualZoom = exp(newValue.toDouble()).toFloat()
+                    view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
                     if (isFrozen) {
                         onFrozenScaleChange(actualZoom)
                     } else {
@@ -543,7 +546,10 @@ fun CombinedZoomFiltersTuneTabContent(
             )
             Slider(
                 value = brightness,
-                onValueChange = { onBrightnessChange(it) },
+                onValueChange = { newValue ->
+                    view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                    onBrightnessChange(newValue)
+                },
                 valueRange = -80f..80f,
                 enabled = isFrozen,
                 interactionSource = brightnessInteractionSource,
@@ -685,6 +691,7 @@ fun CombinedZoomFiltersTuneTabContent(
             Slider(
                 value = if (isFrozen) contrast else exposureIndex.toFloat(),
                 onValueChange = { newValue ->
+                    view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
                     if (isFrozen) {
                         onContrastChange(newValue)
                     } else {
@@ -749,7 +756,10 @@ fun CombinedZoomFiltersTuneTabContent(
                 var draggingValue by remember(sharpenStrength) { mutableFloatStateOf(sharpenStrength) }
                 Slider(
                     value = draggingValue,
-                    onValueChange = { draggingValue = it },
+                    onValueChange = { newValue ->
+                        view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                        draggingValue = newValue
+                    },
                     onValueChangeFinished = { onSharpenStrengthChange(draggingValue) },
                     valueRange = 0.0f..10.0f,
                     interactionSource = sharpenInteractionSource,
@@ -838,7 +848,10 @@ fun CombinedZoomFiltersTuneTabContent(
                     )
                     Slider(
                         value = manualFocusDistance,
-                        onValueChange = onManualFocusDistanceChange,
+                        onValueChange = { newValue ->
+                            view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                            onManualFocusDistanceChange(newValue)
+                        },
                         valueRange = 0f..minFocusDistance.coerceAtLeast(0.1f),
                         enabled = isManualEnabled,
                         interactionSource = focusInteractionSource,

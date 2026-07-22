@@ -564,7 +564,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
     var isSliderDragging by remember { mutableStateOf(false) }
 
     val panelAlpha by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (isSliderDragging) 0.05f else 1.0f,
+        targetValue = if (isSliderDragging) 0.10f else 1.0f,
         animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
         label = "panel_alpha"
     )
