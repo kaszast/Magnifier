@@ -174,15 +174,17 @@ fun applyFocusSettings(
             camera2CameraControl.clearCaptureRequestOptions()
         }
         "locked" -> {
-            camera2CameraControl.captureRequestOptions = androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
+            val options = androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
                 .setCaptureRequestOption(android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE, android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE_AUTO)
                 .build()
+            camera2CameraControl.setCaptureRequestOptions(options)
         }
         "manual" -> {
-            camera2CameraControl.captureRequestOptions = androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
+            val options = androidx.camera.camera2.interop.CaptureRequestOptions.Builder()
                 .setCaptureRequestOption(android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE, android.hardware.camera2.CaptureRequest.CONTROL_AF_MODE_OFF)
                 .setCaptureRequestOption(android.hardware.camera2.CaptureRequest.LENS_FOCUS_DISTANCE, focusDistance)
                 .build()
+            camera2CameraControl.setCaptureRequestOptions(options)
         }
     }
 }

@@ -434,9 +434,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
     // --- OCR és TTS állapotok ---
     var ocrResultText by remember { mutableStateOf("") }
     var showOcrDialog by remember { mutableStateOf(false) }
-    var qrResultText by remember { mutableStateOf("") }
-    var qrResultType by remember { mutableStateOf("") }
-    var isQrUrl by remember { mutableStateOf(false) }
+    var qrResult by remember { mutableStateOf<com.example.domain.barcode.BarcodeResult?>(null) }
     var showQrDialog by remember { mutableStateOf(false) }
     var tts: android.speech.tts.TextToSpeech? by remember { mutableStateOf(null) }
 
@@ -596,31 +594,13 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
 
     val view = androidx.compose.ui.platform.LocalView.current
     LaunchedEffect(focusMode, manualFocusDistance, camera) {
-        val cam = camera ?: return@LaunchedEffect
-        applyFocusSettings(cam, focusMode, manualFocusDistance)
-        if (focusMode == "auto") {
-            try {
-                val factory = androidx.camera.core.SurfaceOrientedMeteringPointFactory(1f, 1f)
-                val point = factory.createPoint(0.5f, 0.5f)
-                val action = androidx.camera.core.FocusMeteringAction.Builder(point, androidx.camera.core.FocusMeteringAction.FLAG_AF)
-                    .build()
-                val future = cam.cameraControl.startFocusAndMetering(action)
-                future.addListener({
-                    try {
-                        val result = future.get()
-                        if (result.isFocusSuccessful) {
-                            view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
-                        }
-                    } catch (e: Exception) {
-                        // Ignoráljuk a kivételeket
-                    }
-                }, androidx.core.content.ContextCompat.getMainExecutor(context))
-            } catch (e: Exception) {
-                android.util.Log.e("Magnifier", "Failed to start focus scan", e)
-            }
-        } else if (focusMode == "manual") {
-            view.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
-        }
+        com.example.domain.camera.CameraFocusHandler.updateFocus(
+            camera = camera,
+            focusMode = focusMode,
+            manualFocusDistance = manualFocusDistance,
+            context = context,
+            view = view
+        )
     }
 
     androidx.compose.runtime.DisposableEffect(Unit) {
@@ -667,69 +647,54 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
 
     fun runOcrOnBitmap(bmp: Bitmap) {
         isProcessing = true
-        val recognizer = com.google.mlkit.vision.text.TextRecognition.getClient(com.google.mlkit.vision.text.latin.TextRecognizerOptions.DEFAULT_OPTIONS)
-        val image = com.google.mlkit.vision.common.InputImage.fromBitmap(bmp, 0)
-        recognizer.process(image)
-            .addOnSuccessListener { visionText ->
+        com.example.domain.ocr.OcrHandler.processImage(
+            bitmap = bmp,
+            onSuccess = { text ->
                 isProcessing = false
-                val text = visionText.text
-                if (text.isNotBlank()) {
-                    ocrResultText = text
-                    showOcrDialog = true
-                } else {
-                    toastIcon = Icons.AutoMirrored.Filled.TextSnippet
-                    toastSubIcon = Icons.Default.Warning
-                    toastColor = Color(0xFFFFB300) // amber yellow
-                    showSavedToast = true
-                }
-            }
-            .addOnFailureListener { e ->
+                ocrResultText = text
+                showOcrDialog = true
+            },
+            onEmpty = {
                 isProcessing = false
-                android.util.Log.e("Magnifier", "OCR failed", e)
+                toastIcon = Icons.AutoMirrored.Filled.TextSnippet
+                toastSubIcon = Icons.Default.Warning
+                toastColor = Color(0xFFFFB300)
+                showSavedToast = true
+            },
+            onFailure = {
+                isProcessing = false
                 toastIcon = Icons.AutoMirrored.Filled.TextSnippet
                 toastSubIcon = Icons.Default.Error
-                toastColor = Color(0xFFEF4444) // red
+                toastColor = Color(0xFFEF4444)
                 showSavedToast = true
             }
+        )
     }
 
     fun runBarcodeScanner(bmp: Bitmap) {
         isProcessing = true
-        val scanner = com.google.mlkit.vision.barcode.BarcodeScanning.getClient()
-        val image = com.google.mlkit.vision.common.InputImage.fromBitmap(bmp, 0)
-        scanner.process(image)
-            .addOnSuccessListener { barcodes ->
+        com.example.domain.barcode.BarcodeHandler.processImage(
+            bitmap = bmp,
+            onSuccess = { result ->
                 isProcessing = false
-                if (barcodes.isNotEmpty()) {
-                    val barcode = barcodes[0]
-                    val raw = barcode.rawValue ?: ""
-                    qrResultText = barcode.displayValue ?: raw
-                    isQrUrl = barcode.valueType == com.google.mlkit.vision.barcode.common.Barcode.TYPE_URL
-                    qrResultType = when (barcode.valueType) {
-                        com.google.mlkit.vision.barcode.common.Barcode.TYPE_URL -> "Webcím (URL)"
-                        com.google.mlkit.vision.barcode.common.Barcode.TYPE_TEXT -> "Szöveg"
-                        com.google.mlkit.vision.barcode.common.Barcode.TYPE_PRODUCT -> "Termékkód"
-                        com.google.mlkit.vision.barcode.common.Barcode.TYPE_ISBN -> "Könyv (ISBN)"
-                        com.google.mlkit.vision.barcode.common.Barcode.TYPE_WIFI -> "WiFi Hálózat"
-                        com.google.mlkit.vision.barcode.common.Barcode.TYPE_CONTACT_INFO -> "Kapcsolati adatok"
-                        else -> "Vonalkód / QR-kód"
-                    }
-                    showQrDialog = true
-                } else {
-                    toastIcon = Icons.Default.QrCodeScanner
-                    toastSubIcon = Icons.Default.Warning
-                    toastColor = Color(0xFFFFB300) // amber yellow
-                    showSavedToast = true
-                }
-            }
-            .addOnFailureListener { e ->
+                qrResult = result
+                showQrDialog = true
+            },
+            onEmpty = {
                 isProcessing = false
-                android.util.Log.e("Magnifier", "Barcode scanning failed", e)
+                toastIcon = Icons.Default.QrCodeScanner
+                toastSubIcon = Icons.Default.Warning
+                toastColor = Color(0xFFFFB300)
+                showSavedToast = true
+            },
+            onFailure = {
+                isProcessing = false
                 toastIcon = Icons.Default.QrCodeScanner
                 toastSubIcon = Icons.Default.Error
-                toastColor = Color(0xFFEF4444) // red
+                toastColor = Color(0xFFEF4444)
                 showSavedToast = true
             }
+        )
     }
 
     // Grab thumbnail dynamically and generate sharpened live overlay when digital zoom is active in live mode.
@@ -740,62 +705,30 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
     // extraDigitalZoom float. Így a polling-hurok csak akkor indul újra, amikor átbillenünk a
     // "van digitális zoom" / "nincs" határon — nem pedig minden apró zoom-változásnál. A hurokban
     // futó coroutine-t a LaunchedEffect automatikusan megszakítja, amint a feltétel false lesz.
+    // surfaceProvider bekötése CSAK akkor, amikor a previewUseCase ténylegesen megváltozik.
+    // Így recomposition alatt (pl. zoom slider húzásakor) NEM hívódik meg újra a setSurfaceProvider,
+    // megakadályozva a kamerakép 0.5mp-es elsötétedését és felületi villanását.
+    LaunchedEffect(previewUseCase) {
+        previewUseCase?.setSurfaceProvider(previewView.surfaceProvider)
+    }
+
+    // A ZoomMinimap kis bélyegképének (liveThumbnailBitmap) kíméletes frissítése digitális zoom esetén.
+    // 500ms-os időközönként frissítjük a kis kártya képét, megszüntetve a tekerő karikát.
     LaunchedEffect(extraDigitalZoom > 1.0f) {
         if (extraDigitalZoom > 1.0f) {
-            // Végtelen ciklus, amíg a coroutine él (a delay(120) alján lélegzik). A megszakításkor
-            // dobott CancellationException-t szándékosan NEM nyeljük el (lásd a catch-ben), mert az a
-            // coroutine rendes leállásának a jele — el kell engednünk.
             while (true) {
                 try {
                     val bmp = previewView.bitmap
                     if (bmp != null) {
                         liveThumbnailBitmap = bmp
-                        val strength = sharpenStrength
-                        if (strength > 0.0f) {
-                            // Process scaling and sharpening asynchronously in background thread to avoid UI block
-                            val sharpened = withContext(Dispatchers.Default) {
-                                // Scale down to a maximum dimension of 540px to ensure ultra-fast processing (<15ms)
-                                val maxDim = 540
-                                val scale = if (bmp.width > maxDim || bmp.height > maxDim) {
-                                    maxDim.toFloat() / maxOf(bmp.width, bmp.height).toFloat()
-                                } else {
-                                    1.0f
-                                }
-
-                                val workingBmp = if (scale < 1.0f) {
-                                    val targetW = (bmp.width * scale).toInt().coerceAtLeast(1)
-                                    val targetH = (bmp.height * scale).toInt().coerceAtLeast(1)
-                                    Bitmap.createScaledBitmap(bmp, targetW, targetH, true)
-                                } else {
-                                    bmp
-                                }
-
-                                val sharp = sharpenBitmap(workingBmp, strength = strength)
-
-                                // Clean up temporary scaled bitmap if created
-                                if (workingBmp != bmp && workingBmp != sharp) {
-                                    workingBmp.recycle()
-                                }
-
-                                sharp
-                            }
-                            liveSharpenedBitmap = sharpened
-                        } else {
-                            liveSharpenedBitmap = null
-                        }
                     }
-                } catch (e: Throwable) {
-                    // A CancellationException a coroutine leállításának jele → továbbdobjuk (kötelező).
-                    // Minden más (pl. átmeneti getBitmap-hiba) elnyelhető: a következő körben újrapróbáljuk.
-                    if (e is kotlinx.coroutines.CancellationException) throw e
-                    // ignore errors fetching bitmap
+                } catch (e: Exception) {
+                    // ignore
                 }
-                delay(120) // 8-10 FPS is more than enough for live digital zoom overlay and preserves battery/CPU
+                delay(500)
             }
         } else {
-            // Nincs digitális zoom → nincs szükség overlay-re/thumbnail-re; felszabadítjuk a referenciát.
             liveThumbnailBitmap = null
-            liveSharpenedBitmap = null
         }
     }
 
@@ -909,9 +842,21 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
     //                          indítja/állítja le a kamerát az Activity életciklusa szerint.
     //
     // A kulcs a selectedCameraIndex: kameraváltáskor újra lefut az egész bind-folyamat az új kamerára.
+    var cachedExtensionsManager by remember { mutableStateOf<androidx.camera.extensions.ExtensionsManager?>(null) }
+
+    LaunchedEffect(context) {
+        if (hasCameraPermission(context)) {
+            try {
+                val provider = awaitListenableFuture(ProcessCameraProvider.getInstance(context), context)
+                val future = androidx.camera.extensions.ExtensionsManager.getInstanceAsync(context, provider)
+                cachedExtensionsManager = awaitListenableFuture(future, context)
+            } catch (e: Exception) {
+                Log.e("Magnifier", "Async pre-init ExtensionsManager failed", e)
+            }
+        }
+    }
+
     LaunchedEffect(selectedCameraIndex, isHdrEnabled, isNightEnabled) {
-        // Engedély nélkül nincs mit bindolni: jelezzük, hogy az ellenőrzés kész (a hívó ág ilyenkor
-        // a NoCameraScreen-t mutatja), és korán kilépünk (return@LaunchedEffect a címkézett return).
         if (!hasCameraPermission(context)) {
             isCameraCheckingFinished = true
             return@LaunchedEffect
@@ -922,55 +867,41 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
             availableCameras = cameraInfos
 
             if (cameraInfos.isEmpty()) {
-                // Nincs elérhető kamera → hibaállapot, a UI a NoCameraScreen-re vált.
                 isCameraBindingFailed = true
                 previewUseCase = null
                 isCameraCheckingFinished = true
                 return@LaunchedEffect
             }
 
-            // A mentett index túlcsúszhat, ha kevesebb kamera van, mint korábban → beszorítjuk a tartományba.
             val index = selectedCameraIndex.coerceIn(0, cameraInfos.lastIndex)
             val selectedCameraInfo = cameraInfos[index]
 
-            val previewBuilder = Preview.Builder()
-            val interopExtender = androidx.camera.camera2.interop.Camera2Interop.Extender(previewBuilder)
-            interopExtender.setCaptureRequestOption(
-                android.hardware.camera2.CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
-                android.hardware.camera2.CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_ON
-            )
-            interopExtender.setCaptureRequestOption(
-                android.hardware.camera2.CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
-                android.hardware.camera2.CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_ON
-            )
-            val preview = previewBuilder.build()
+            val preview = Preview.Builder().build()
 
-            // MINIMIZE_LATENCY: a fotó a lehető leggyorsabban készüljön el (a fagyasztás azonnaliságához),
-            // a maximális minőség helyett a késleltetés minimalizálására optimalizál.
             val localImageCapture = ImageCapture.Builder()
                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                 .build()
             imageCapture = localImageCapture
 
-            // Egyedi szűrő, amely PONTOSAN a kiválasztott fizikai kamerát célozza (nem csak "elülső/hátsó").
             val cameraSelector = CameraSelector.Builder()
                 .addCameraFilter { infos ->
                     infos.filter { it == selectedCameraInfo }
                 }
                 .build()
 
-            // Lekérdezzük a kiterjesztéseket (HDR, Éjszakai képjavítás)
-            val extensionsManagerFuture = androidx.camera.extensions.ExtensionsManager.getInstanceAsync(context, cameraProvider)
-            val extensionsManager = awaitListenableFuture(extensionsManagerFuture, context)
+            val extManager = cachedExtensionsManager ?: run {
+                val extensionsManagerFuture = androidx.camera.extensions.ExtensionsManager.getInstanceAsync(context, cameraProvider)
+                awaitListenableFuture(extensionsManagerFuture, context).also { cachedExtensionsManager = it }
+            }
 
-            isHdrSupported = extensionsManager.isExtensionAvailable(cameraSelector, androidx.camera.extensions.ExtensionMode.HDR)
-            isNightSupported = extensionsManager.isExtensionAvailable(cameraSelector, androidx.camera.extensions.ExtensionMode.NIGHT)
+            isHdrSupported = extManager.isExtensionAvailable(cameraSelector, androidx.camera.extensions.ExtensionMode.HDR)
+            isNightSupported = extManager.isExtensionAvailable(cameraSelector, androidx.camera.extensions.ExtensionMode.NIGHT)
 
             var finalCameraSelector = cameraSelector
             if (isHdrEnabled && isHdrSupported) {
-                finalCameraSelector = extensionsManager.getExtensionEnabledCameraSelector(cameraSelector, androidx.camera.extensions.ExtensionMode.HDR)
+                finalCameraSelector = extManager.getExtensionEnabledCameraSelector(cameraSelector, androidx.camera.extensions.ExtensionMode.HDR)
             } else if (isNightEnabled && isNightSupported) {
-                finalCameraSelector = extensionsManager.getExtensionEnabledCameraSelector(cameraSelector, androidx.camera.extensions.ExtensionMode.NIGHT)
+                finalCameraSelector = extManager.getExtensionEnabledCameraSelector(cameraSelector, androidx.camera.extensions.ExtensionMode.NIGHT)
             }
 
             isCameraBindingFailed = false
@@ -1092,9 +1023,12 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                         //   - factory: egyszer állítja elő a View-t (a stabil previewView-t adjuk).
                         //   - update : recompositionkor fut; ide kötjük a Preview use case-t a View Surface-ére.
                         AndroidView(
-                            factory = { previewView },
+                            factory = {
+                                previewView.apply {
+                                    previewUseCase?.setSurfaceProvider(surfaceProvider)
+                                }
+                            },
                             update = { view ->
-                                previewUseCase?.setSurfaceProvider(view.surfaceProvider)
                                 if (filterMode == FilterMode.NORMAL) {
                                     view.setLayerType(android.view.View.LAYER_TYPE_NONE, null)
                                 } else {
@@ -1616,55 +1550,17 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
             }
 
             // Saját, testreszabott "toast" (felugró visszajelzés) overlay.
-            // Nem az Android beépített Toast-ja: az nem stílusozható és nem animálható tetszőlegesen,
-            // ezért itt saját megoldás készül. A showSavedToast flag vezérli (mentés/megosztás/hiba
-            // után állítjuk true-ra); az AnimatedVisibility be- és kicsúsztatja/elhalványítja.
-            // Egy fentebbi LaunchedEffect(showSavedToast) pár másodperc után magától elrejti.
-            // A toastIcon a fő ikon, a toastSubIcon (ha van) egy kis kiegészítő állapotjelző
-            // (pipa = siker, felkiáltójel = hiba/figyelmeztetés), a toastColor a háttérszín.
-            AnimatedVisibility(
+            com.example.ui.components.ToastOverlay(
                 visible = showSavedToast,
-                enter = fadeIn() + slideInVertically(),
-                exit = fadeOut() + slideOutVertically(),
+                mainIcon = toastIcon,
+                subIcon = toastSubIcon,
+                backgroundColor = toastColor,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 32.dp)
-            ) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = toastColor),
-                    shape = RoundedCornerShape(12.dp),
-                    elevation = CardDefaults.cardElevation(8.dp),
-                    modifier = Modifier.padding(horizontal = 32.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = toastIcon,
-                            contentDescription = stringResource(R.string.cd_notification),
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        toastSubIcon?.let { subIcon ->
-                            Icon(
-                                imageVector = subIcon,
-                                contentDescription = stringResource(R.string.cd_notification_detail),
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
-            }
+            )
 
             // Teljes képernyős töltés-jelző (spinner) overlay.
-            // Amíg háttérfeldolgozás zajlik (isProcessing = true — pl. a kimerevített kép
-            // élesítése, mentése), egy félig áttetsző fekete réteget és egy pörgő indikátort
-            // teszünk MINDEN más fölé. Mivel ez a Box a legkülső Box UTOLSÓ gyereke, a
-            // rétegzési (z-) sorrendben legfelülre kerül, és a sötét háttér vizuálisan
-            // "letiltja" a mögötte lévő UI-t, amíg a művelet tart.
             if (isProcessing) {
                 Box(
                     modifier = Modifier
@@ -1734,286 +1630,35 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
 
             // OCR (Szövegfelismerés) Eredmény Dialog
             if (showOcrDialog) {
-                androidx.compose.material3.AlertDialog(
-                    onDismissRequest = {
-                        showOcrDialog = false
-                        tts?.stop()
-                    },
-                    text = {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = 300.dp)
-                                    .background(Color(0xFF111115), RoundedCornerShape(8.dp))
-                                    .border(1.dp, Color(0xFF2E2C33), RoundedCornerShape(8.dp))
-                                    .padding(12.dp)
-                                    .verticalScroll(androidx.compose.foundation.rememberScrollState())
-                            ) {
-                                Text(
-                                    text = ocrResultText,
-                                    color = Color.White,
-                                    fontSize = 14.sp
-                                )
-                            }
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Button(
-                                    onClick = { speakText(ocrResultText, "hu") },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = themeColor,
-                                        contentColor = Color.Black
-                                    ),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Magyar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                }
-
-                                Button(
-                                    onClick = { speakText(ocrResultText, "en") },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = themeColor,
-                                        contentColor = Color.Black
-                                    ),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("English", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-                    },
-                    confirmButton = {
-                        val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
-                        val context = androidx.compose.ui.platform.LocalContext.current
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceAround,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(
-                                onClick = {
-                                    showOcrDialog = false
-                                    tts?.stop()
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = stringResource(R.string.action_close),
-                                    tint = Color(0xFFEF4444),
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-
-                            IconButton(
-                                onClick = {
-                                    clipboard.setText(androidx.compose.ui.text.AnnotatedString(ocrResultText))
-                                    toastIcon = Icons.AutoMirrored.Filled.TextSnippet
-                                    toastSubIcon = Icons.Default.CheckCircle
-                                    toastColor = themeColor
-                                    showSavedToast = true
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.ContentCopy,
-                                    contentDescription = stringResource(R.string.ocr_copy),
-                                    tint = themeColor,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-
-                            IconButton(
-                                onClick = {
-                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, ocrResultText)
-                                    }
-                                    context.startActivity(Intent.createChooser(shareIntent, null))
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Share,
-                                    contentDescription = stringResource(R.string.cd_share),
-                                    tint = themeColor,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                        }
-                    },
-                    containerColor = Color(0xFF1F1E26)
+                com.example.ui.dialogs.OcrResultDialog(
+                    text = ocrResultText,
+                    themeColor = themeColor,
+                    tts = tts,
+                    onSpeak = { textToSpeak, lang -> speakText(textToSpeak, lang) },
+                    onDismiss = { showOcrDialog = false },
+                    onCopySuccess = {
+                        toastIcon = Icons.AutoMirrored.Filled.TextSnippet
+                        toastSubIcon = Icons.Default.CheckCircle
+                        toastColor = themeColor
+                        showSavedToast = true
+                    }
                 )
             }
 
             // QR/Vonalkód Eredmény Dialog
-            if (showQrDialog) {
-                androidx.compose.material3.AlertDialog(
-                    onDismissRequest = {
-                        showQrDialog = false
-                        tts?.stop()
-                    },
-                    text = {
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = qrResultType,
-                                color = themeColor,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            )
-                            
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = 200.dp)
-                                    .background(Color(0xFF111115), RoundedCornerShape(8.dp))
-                                    .border(1.dp, Color(0xFF2E2C33), RoundedCornerShape(8.dp))
-                                    .padding(12.dp)
-                                    .verticalScroll(androidx.compose.foundation.rememberScrollState())
-                            ) {
-                                Text(
-                                    text = qrResultText,
-                                    color = Color.White,
-                                    fontSize = 14.sp
-                                )
-                            }
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Button(
-                                    onClick = { speakText(qrResultText, "hu") },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = themeColor,
-                                        contentColor = Color.Black
-                                    ),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Magyar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                }
-
-                                Button(
-                                    onClick = { speakText(qrResultText, "en") },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = themeColor,
-                                        contentColor = Color.Black
-                                    ),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("English", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-                    },
-                    confirmButton = {
-                        val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
-                        val context = androidx.compose.ui.platform.LocalContext.current
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceAround,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(
-                                onClick = {
-                                    showQrDialog = false
-                                    tts?.stop()
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = stringResource(R.string.action_close),
-                                    tint = Color(0xFFEF4444),
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-
-                            if (isQrUrl) {
-                                IconButton(
-                                    onClick = {
-                                        try {
-                                            val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(qrResultText))
-                                            context.startActivity(intent)
-                                        } catch (e: Exception) {
-                                            android.util.Log.e("Magnifier", "Failed to open URL", e)
-                                        }
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.OpenInBrowser,
-                                        contentDescription = "Megnyitás",
-                                        tint = themeColor,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                            }
-
-                            IconButton(
-                                onClick = {
-                                    clipboard.setText(androidx.compose.ui.text.AnnotatedString(qrResultText))
-                                    toastIcon = Icons.Default.QrCodeScanner
-                                    toastSubIcon = Icons.Default.CheckCircle
-                                    toastColor = themeColor
-                                    showSavedToast = true
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.ContentCopy,
-                                    contentDescription = stringResource(R.string.ocr_copy),
-                                    tint = themeColor,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-
-                            IconButton(
-                                onClick = {
-                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, qrResultText)
-                                    }
-                                    context.startActivity(Intent.createChooser(shareIntent, null))
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Share,
-                                    contentDescription = stringResource(R.string.cd_share),
-                                    tint = themeColor,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                        }
-                    },
-                    containerColor = Color(0xFF1F1E26)
+            if (showQrDialog && qrResult != null) {
+                com.example.ui.dialogs.QrResultDialog(
+                    result = qrResult!!,
+                    themeColor = themeColor,
+                    tts = tts,
+                    onSpeak = { textToSpeak, lang -> speakText(textToSpeak, lang) },
+                    onDismiss = { showQrDialog = false },
+                    onCopySuccess = {
+                        toastIcon = Icons.Default.QrCodeScanner
+                        toastSubIcon = Icons.Default.CheckCircle
+                        toastColor = themeColor
+                        showSavedToast = true
+                    }
                 )
             }
         }
