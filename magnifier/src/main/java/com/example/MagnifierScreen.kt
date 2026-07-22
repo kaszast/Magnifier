@@ -512,10 +512,17 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
         }
     }
 
-    // Ha visszatérünk az élő képhez (isFrozen = false), az élesítés erősségét visszaállítjuk 0-ra.
+    var frozenScale by rememberSaveable { mutableStateOf(1.0f) }
+    var frozenOffset by rememberSaveable(stateSaver = OffsetSaver) { mutableStateOf(Offset.Zero) }
+    var frozenRotationDegrees by rememberSaveable { androidx.compose.runtime.mutableIntStateOf(0) }
+    var frozenIsFlippedHorizontal by rememberSaveable { mutableStateOf(false) }
+
+    // Ha visszatérünk az élő képhez (isFrozen = false), az élesítés erősségét, az elforgatást és tükrözést visszaállítjuk.
     LaunchedEffect(isFrozen) {
         if (!isFrozen) {
             sharpenStrength = 0.0f
+            frozenRotationDegrees = 0
+            frozenIsFlippedHorizontal = false
         }
     }
 
@@ -552,8 +559,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
 
     // --- A kimerevített kép saját digitális zoom/pan állapota ---
     // (Az élő módé az extraDigitalZoom/extraDigitalPan; fagyasztáskor ezekbe másoljuk át — lásd onToggleFreeze.)
-    var frozenScale by rememberSaveable { mutableStateOf(1.0f) }
-    var frozenOffset by rememberSaveable(stateSaver = OffsetSaver) { mutableStateOf(Offset.Zero) }
+
 
     // A viewfinder (nézőke) tényleges pixelmérete. Debben a Compose méri be az onSizeChanged-del (lásd UI szekció),
     // és kell a pan-határok (clampPan) és a minimap geometria kiszámításához. remember: layoutfüggő, nem beállítás.
@@ -1162,8 +1168,9 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .graphicsLayer {
-                                        scaleX = frozenScale
+                                        scaleX = frozenScale * (if (frozenIsFlippedHorizontal) -1f else 1f)
                                         scaleY = frozenScale
+                                        rotationZ = frozenRotationDegrees.toFloat()
                                         translationX = frozenOffset.x
                                         translationY = frozenOffset.y
                                     }
@@ -1373,11 +1380,14 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                                 val filterNow = filterMode
                                 val contrastNow = contrast
                                 val brightnessNow = brightness
+                                val rotationNow = if (frozenNow) frozenRotationDegrees else 0
+                                val flipNow = if (frozenNow) frozenIsFlippedHorizontal else false
                                 isProcessing = true
                                 coroutineScope.launch(Dispatchers.Default) {
                                     val exportBitmap = processExportBitmap(
                                         rawBitmap, frozenNow, digitalZoomNow, digitalPanNow,
-                                        sharpenNow, filterNow, contrastNow, brightnessNow
+                                        sharpenNow, filterNow, contrastNow, brightnessNow,
+                                        rotationDegrees = rotationNow, isFlippedHorizontal = flipNow
                                     )
                                     val savedUri = withContext(Dispatchers.IO) {
                                         saveBitmapToGallery(context, exportBitmap)
@@ -1420,6 +1430,8 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                                 rawFrozenBitmap = null
                                 frozenScale = 1.0f
                                 frozenOffset = Offset.Zero
+                                frozenRotationDegrees = 0
+                                frozenIsFlippedHorizontal = false
                             } else {
                                 val bmp = previewView.bitmap
                                 if (bmp != null) {
@@ -1429,6 +1441,8 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                                     // Transfer current extra digital zoom and pan seamlessly to the frozen frame view
                                     frozenScale = extraDigitalZoom
                                     frozenOffset = extraDigitalPan
+                                    frozenRotationDegrees = 0
+                                    frozenIsFlippedHorizontal = false
 
                                     // Háttérben natív felbontású still capture, ami megérkezéskor lecseréli a snapshotot
                                     val capture = imageCapture
@@ -1469,11 +1483,14 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                                 val filterNow = filterMode
                                 val contrastNow = contrast
                                 val brightnessNow = brightness
+                                val rotationNow = if (frozenNow) frozenRotationDegrees else 0
+                                val flipNow = if (frozenNow) frozenIsFlippedHorizontal else false
                                 isProcessing = true
                                 coroutineScope.launch(Dispatchers.Default) {
                                     val exportBitmap = processExportBitmap(
                                         rawBitmap, frozenNow, digitalZoomNow, digitalPanNow,
-                                        sharpenNow, filterNow, contrastNow, brightnessNow
+                                        sharpenNow, filterNow, contrastNow, brightnessNow,
+                                        rotationDegrees = rotationNow, isFlippedHorizontal = flipNow
                                     )
                                     withContext(Dispatchers.Main) {
                                         isProcessing = false
@@ -1508,7 +1525,15 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                                 toastColor = Color(0xFFFFB300)
                                 showSavedToast = true
                             }
-                        }
+                        },
+                        onRotateClick = {
+                            frozenRotationDegrees = (frozenRotationDegrees + 90) % 360
+                        },
+                        onFlipClick = {
+                            frozenIsFlippedHorizontal = !frozenIsFlippedHorizontal
+                        },
+                        frozenRotationDegrees = frozenRotationDegrees,
+                        frozenIsFlippedHorizontal = frozenIsFlippedHorizontal
                     )
 
                     // 4. Compact pill-shaped Segmented Control Navigation Tab Row

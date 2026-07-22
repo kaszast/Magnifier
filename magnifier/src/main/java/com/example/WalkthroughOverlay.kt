@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
+import androidx.compose.material.icons.automirrored.filled.RotateRight
+
 data class WalkthroughStep(
     val titleRes: Int,
     val bodyRes: Int,
@@ -65,6 +67,12 @@ fun WalkthroughOverlay(
             titleRes = R.string.walkthrough_title_4,
             bodyRes = R.string.walkthrough_body_4,
             icon = Icons.AutoMirrored.Filled.TextSnippet,
+            iconColor = themeColor
+        ),
+        WalkthroughStep(
+            titleRes = R.string.walkthrough_title_rotate_flip,
+            bodyRes = R.string.walkthrough_body_rotate_flip,
+            icon = Icons.AutoMirrored.Filled.RotateRight,
             iconColor = themeColor
         ),
         WalkthroughStep(

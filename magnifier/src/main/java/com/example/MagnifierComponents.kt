@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.TextSnippet
+import androidx.compose.material.icons.automirrored.filled.RotateRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -451,20 +452,22 @@ fun ActionButtonsRow(
     onShare: () -> Unit,
     onOcrClick: () -> Unit,
     onBarcodeClick: () -> Unit,
+    onRotateClick: () -> Unit = {},
+    onFlipClick: () -> Unit = {},
+    frozenRotationDegrees: Int = 0,
+    frozenIsFlippedHorizontal: Boolean = false,
 ) {
     // A gombokat vízszintes Row-ba tesszük, teljes szélességben (fillMaxWidth).
-    // Arrangement.SpaceAround: a szabad helyet egyenletesen osztja el a gombok között
-    // ÉS a két szélén is (a szélső rés a belsők fele) — így légző, kiegyensúlyozott sor.
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceAround,
+        horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Ha fagyasztott kép van, OCR (szövegfelismerés) és QR/Vonalkód gombot mutatunk a lámpa helyett
+        // Ha fagyasztott kép van, OCR, QR/Vonalkód, Elforgatás és Tükrözés gombot mutatunk
         if (isFrozen) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(38.dp)
                     .background(Color(0xFF1F1E26), CircleShape)
                     .border(
                         1.dp,
@@ -485,7 +488,7 @@ fun ActionButtonsRow(
 
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(38.dp)
                     .background(Color(0xFF1F1E26), CircleShape)
                     .border(
                         1.dp,
@@ -500,6 +503,57 @@ fun ActionButtonsRow(
                     imageVector = Icons.Default.QrCodeScanner,
                     contentDescription = "QR / Vonalkód",
                     tint = themeColor,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            // Elforgatás (90 fokonként) Gomb
+            val isRotated = frozenRotationDegrees != 0
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .background(
+                        if (isRotated) themeColor.copy(alpha = 0.2f) else Color(0xFF1F1E26),
+                        CircleShape
+                    )
+                    .border(
+                        1.dp,
+                        if (isRotated) themeColor else Color(0xFF2E2C33),
+                        CircleShape
+                    )
+                    .clickable { onRotateClick() }
+                    .testTag("rotate_button"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.RotateRight,
+                    contentDescription = stringResource(R.string.cd_rotate),
+                    tint = if (isRotated) themeColor else Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            // Tükrözés (Függőleges tengely mentén) Gomb
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .background(
+                        if (frozenIsFlippedHorizontal) themeColor.copy(alpha = 0.2f) else Color(0xFF1F1E26),
+                        CircleShape
+                    )
+                    .border(
+                        1.dp,
+                        if (frozenIsFlippedHorizontal) themeColor else Color(0xFF2E2C33),
+                        CircleShape
+                    )
+                    .clickable { onFlipClick() }
+                    .testTag("flip_button"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Flip,
+                    contentDescription = stringResource(R.string.cd_flip),
+                    tint = if (frozenIsFlippedHorizontal) themeColor else Color.White,
                     modifier = Modifier.size(18.dp)
                 )
             }

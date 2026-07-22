@@ -432,13 +432,26 @@ fun processExportBitmap(
     sharpenStrength: Float,
     filterMode: FilterMode,
     contrast: Float,
-    brightness: Float
+    brightness: Float,
+    rotationDegrees: Int = 0,
+    isFlippedHorizontal: Boolean = false
 ): Bitmap {
+    var result = raw
+    if (rotationDegrees != 0 || isFlippedHorizontal) {
+        val matrix = android.graphics.Matrix()
+        if (isFlippedHorizontal) {
+            matrix.postScale(-1f, 1f, result.width / 2f, result.height / 2f)
+        }
+        if (rotationDegrees != 0) {
+            matrix.postRotate(rotationDegrees.toFloat(), result.width / 2f, result.height / 2f)
+        }
+        result = Bitmap.createBitmap(result, 0, 0, result.width, result.height, matrix, true)
+    }
+
     // Fagyasztott kép: a kontraszt/fényerő is látszik, tehát azokat is alkalmazzuk.
     if (isFrozen) {
-        return applyColorFilterToBitmap(raw, filterMode, contrast, brightness)
+        return applyColorFilterToBitmap(result, filterMode, contrast, brightness)
     }
-    var result = raw
     // Élő mód: ha van digitális zoom, előbb a látható részt vágjuk ki...
     if (digitalZoom > 1.0f) {
         val rect = computeVisibleCropRect(result.width, result.height, digitalZoom, digitalPan.x, digitalPan.y)
