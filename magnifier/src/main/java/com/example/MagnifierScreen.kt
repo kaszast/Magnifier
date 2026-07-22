@@ -564,14 +564,9 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
     var isSliderDragging by remember { mutableStateOf(false) }
 
     val panelAlpha by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (isSliderDragging) 0.05f else 0.75f,
+        targetValue = if (isSliderDragging) 0.05f else 1.0f,
         animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
         label = "panel_alpha"
-    )
-    val borderAlpha by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (isSliderDragging) 0.1f else 0.6f,
-        animationSpec = androidx.compose.animation.core.tween(durationMillis = 200),
-        label = "border_alpha"
     )
 
     // A viewfinder (nézőke) tényleges pixelmérete. Debben a Compose méri be az onSizeChanged-del (lásd UI szekció),
@@ -1264,8 +1259,9 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                         .height(screenHeight * 0.52f)
                         .padding(horizontal = 16.dp)
                         .padding(bottom = innerPadding.calculateBottomPadding() + 16.dp)
-                        .background(Color(0xFF0D0C11).copy(alpha = panelAlpha), RoundedCornerShape(28.dp))
-                        .border(1.dp, Color(0xFF2E2C33).copy(alpha = borderAlpha), RoundedCornerShape(28.dp))
+                        .graphicsLayer { alpha = panelAlpha }
+                        .background(Color(0xBF0D0C11), RoundedCornerShape(28.dp))
+                        .border(1.dp, Color(0xFF2E2C33).copy(alpha = 0.6f), RoundedCornerShape(28.dp))
                         .clickable(
                             interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                             indication = null
