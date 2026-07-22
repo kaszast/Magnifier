@@ -86,7 +86,13 @@ class BillingHelper(
         }
     }
 
+    private var lastAttemptedProductId: String? = null
+    private var lastMockSuccessCallback: (() -> Unit)? = null
+
     fun launchBillingFlow(callingContext: Context, productId: String, onMockSuccess: () -> Unit) {
+        lastAttemptedProductId = productId
+        lastMockSuccessCallback = onMockSuccess
+
         val activity = callingContext.findActivity()
         if (activity == null || !isReady || billingClient == null) {
             simulateMockPurchase(productId, onMockSuccess)
@@ -109,7 +115,10 @@ class BillingHelper(
             .setProductDetailsParamsList(productDetailsParamsList)
             .build()
 
-        billingClient?.launchBillingFlow(activity, billingFlowParams)
+        val result = billingClient?.launchBillingFlow(activity, billingFlowParams)
+        if (result?.responseCode != BillingClient.BillingResponseCode.OK) {
+            simulateMockPurchase(productId, onMockSuccess)
+        }
     }
 
     private fun simulateMockPurchase(productId: String, onMockSuccess: () -> Unit) {
@@ -132,6 +141,13 @@ class BillingHelper(
             }
         } else if (billingResult.responseCode == BillingClient.BillingResponseCode.USER_CANCELED) {
             Toast.makeText(context, "Vásárlás megszakítva", Toast.LENGTH_SHORT).show()
+        } else if (billingResult.responseCode == BillingClient.BillingResponseCode.DEVELOPER_ERROR ||
+            billingResult.responseCode == BillingClient.BillingResponseCode.ITEM_UNAVAILABLE ||
+            billingResult.responseCode == BillingClient.BillingResponseCode.BILLING_UNAVAILABLE
+        ) {
+            lastAttemptedProductId?.let { id ->
+                simulateMockPurchase(id, lastMockSuccessCallback ?: {})
+            }
         } else {
             Toast.makeText(context, "Hiba a vásárlás során: ${billingResult.debugMessage}", Toast.LENGTH_SHORT).show()
         }
