@@ -1248,7 +1248,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(screenHeight * 0.46f)
+                        .height(screenHeight * 0.52f)
                         .padding(horizontal = 16.dp)
                         .padding(bottom = innerPadding.calculateBottomPadding() + 16.dp)
                         .background(Color(0xBF0D0C11), RoundedCornerShape(28.dp))
