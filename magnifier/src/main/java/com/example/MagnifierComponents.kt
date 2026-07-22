@@ -427,20 +427,7 @@ fun TopLeftControls(
 // logikája NINCS itt — nincs itt a bitmap, a MediaStore-mentés, a share Intent, sem
 // a kimerevítés állapotgépe. Mindez a hívó MagnifierMainScreen-ben van, ahol az összes
 // szükséges állapot (élő kamerakép, kimerevített kép, szűrők, zoom stb.) egy helyen
-// elérhető. A hívó oda adja át a kész műveleteket lambdaként (onSave / onShare /
-// onToggleFreeze / onToggleTorch), ez a sor pedig csak "elsüti" őket a megfelelő
-// gombnál. MIÉRT JÓ: a gombsor önmagában, valódi kamera nélkül is tesztelhető
-// (a lambdák helyére tesztben tetszőleges "kém"-függvény tehető), és bárhol
-// újrahasználható, mert nem kötődik konkrét állapothoz.
-//
-// PARAMÉTEREK:
-//   themeColor     - akcentszín (aktív zseblámpa és a hero gomb színe)
-//   torchEnabled   - be van-e kapcsolva a zseblámpa (ikon/szín választáshoz)
-//   isFrozen       - kimerevített módban vagyunk-e (a hero gomb megjelenése ettől függ)
-//   onToggleTorch  - zseblámpa ki/be kattintás-esemény (hoistolt lambda)
-//   onSave         - mentés kattintás-esemény (hoistolt lambda)
-//   onToggleFreeze - kimerevítés/folytatás kattintás-esemény (hoistolt lambda)
-//   onShare        - megosztás kattintás-esemény (hoistolt lambda)
+// elérhető.
 @Composable
 fun ActionButtonsRow(
     themeColor: Color,
@@ -457,202 +444,266 @@ fun ActionButtonsRow(
     frozenRotationDegrees: Int = 0,
     frozenIsFlippedHorizontal: Boolean = false,
 ) {
-    // A gombokat vízszintes Row-ba tesszük, teljes szélességben (fillMaxWidth).
-    Row(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Ha fagyasztott kép van, OCR, QR/Vonalkód, Elforgatás és Tükrözés gombot mutatunk
         if (isFrozen) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .background(Color(0xFF1F1E26), CircleShape)
-                    .border(
-                        1.dp,
-                        Color(0xFF2E2C33),
-                        CircleShape
-                    )
-                    .clickable { onOcrClick() }
-                    .testTag("ocr_button"),
-                contentAlignment = Alignment.Center
+            // 1. Külön sor a megállított képnél felkerülő új funkcióknak (max 4 ikon, mind 40.dp méretben)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.TextSnippet,
-                    contentDescription = stringResource(R.string.ocr_button),
-                    tint = themeColor,
-                    modifier = Modifier.size(18.dp)
-                )
+                // OCR gomb
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Color(0xFF1F1E26), CircleShape)
+                        .border(1.dp, Color(0xFF2E2C33), CircleShape)
+                        .clickable { onOcrClick() }
+                        .testTag("ocr_button"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.TextSnippet,
+                        contentDescription = stringResource(R.string.ocr_button),
+                        tint = themeColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                // QR / Vonalkód gomb
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Color(0xFF1F1E26), CircleShape)
+                        .border(1.dp, Color(0xFF2E2C33), CircleShape)
+                        .clickable { onBarcodeClick() }
+                        .testTag("barcode_button"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.QrCodeScanner,
+                        contentDescription = "QR / Vonalkód",
+                        tint = themeColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                // Elforgatás 90° gomb
+                val isRotated = frozenRotationDegrees != 0
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            if (isRotated) themeColor.copy(alpha = 0.2f) else Color(0xFF1F1E26),
+                            CircleShape
+                        )
+                        .border(
+                            1.dp,
+                            if (isRotated) themeColor else Color(0xFF2E2C33),
+                            CircleShape
+                        )
+                        .clickable { onRotateClick() }
+                        .testTag("rotate_button"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.RotateRight,
+                        contentDescription = stringResource(R.string.cd_rotate),
+                        tint = if (isRotated) themeColor else Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                // Tükrözés függőleges tengely mentén gomb
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            if (frozenIsFlippedHorizontal) themeColor.copy(alpha = 0.2f) else Color(0xFF1F1E26),
+                            CircleShape
+                        )
+                        .border(
+                            1.dp,
+                            if (frozenIsFlippedHorizontal) themeColor else Color(0xFF2E2C33),
+                            CircleShape
+                        )
+                        .clickable { onFlipClick() }
+                        .testTag("flip_button"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Flip,
+                        contentDescription = stringResource(R.string.cd_flip),
+                        tint = if (frozenIsFlippedHorizontal) themeColor else Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
 
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .background(Color(0xFF1F1E26), CircleShape)
-                    .border(
-                        1.dp,
-                        Color(0xFF2E2C33),
-                        CircleShape
-                    )
-                    .clickable { onBarcodeClick() }
-                    .testTag("barcode_button"),
-                contentAlignment = Alignment.Center
+            // 2. Fő akciógombsor kimerevített módban (Save, Hero Shutter, Share)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.QrCodeScanner,
-                    contentDescription = "QR / Vonalkód",
-                    tint = themeColor,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
+                // Save Button
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Color(0xFF1F1E26), CircleShape)
+                        .border(1.dp, Color(0xFF2E2C33), CircleShape)
+                        .clickable { onSave() }
+                        .testTag("save_button"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Save,
+                        contentDescription = stringResource(R.string.cd_save),
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
 
-            // Elforgatás (90 fokonként) Gomb
-            val isRotated = frozenRotationDegrees != 0
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .background(
-                        if (isRotated) themeColor.copy(alpha = 0.2f) else Color(0xFF1F1E26),
-                        CircleShape
-                    )
-                    .border(
-                        1.dp,
-                        if (isRotated) themeColor else Color(0xFF2E2C33),
-                        CircleShape
-                    )
-                    .clickable { onRotateClick() }
-                    .testTag("rotate_button"),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.RotateRight,
-                    contentDescription = stringResource(R.string.cd_rotate),
-                    tint = if (isRotated) themeColor else Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
+                // Hero Freeze/Resume Shutter Button
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .border(3.dp, Color(0xFFEF4444), CircleShape)
+                        .padding(3.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(0xFFEF4444), CircleShape)
+                            .clickable { onToggleFreeze() }
+                            .testTag("freeze_toggle_button"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = stringResource(R.string.cd_resume),
+                            tint = Color.Black,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
 
-            // Tükrözés (Függőleges tengely mentén) Gomb
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .background(
-                        if (frozenIsFlippedHorizontal) themeColor.copy(alpha = 0.2f) else Color(0xFF1F1E26),
-                        CircleShape
+                // Share Button
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Color(0xFF1F1E26), CircleShape)
+                        .border(1.dp, Color(0xFF2E2C33), CircleShape)
+                        .clickable { onShare() }
+                        .testTag("share_button"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = stringResource(R.string.cd_share),
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
                     )
-                    .border(
-                        1.dp,
-                        if (frozenIsFlippedHorizontal) themeColor else Color(0xFF2E2C33),
-                        CircleShape
-                    )
-                    .clickable { onFlipClick() }
-                    .testTag("flip_button"),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Flip,
-                    contentDescription = stringResource(R.string.cd_flip),
-                    tint = if (frozenIsFlippedHorizontal) themeColor else Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
+                }
             }
         } else {
-            // Zseblámpa gomb. Bekapcsolt állapotban (torchEnabled) a háttér és a keret a
-            // témaszínre vált, az ikon FlashOn/FlashOff-ra, jelezve az aktív állapotot.
-            //
-            // .testTag("torch_button"): teszt-azonosító. Ez a Modifier semmit nem változtat
-            // a kinézeten, de "címkét" ad az elemnek, amivel az UI-tesztek (pl. Compose
-            // testing / Espresso) egyértelműen megtalálják és rákattintanak — anélkül, hogy
-            // a felhasználónak látható szövegre kellene támaszkodniuk.
-            // Torch Button (compact circular glass button)
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(
-                        if (torchEnabled) themeColor else Color(0xFF1F1E26),
-                        CircleShape
-                    )
-                    .border(
-                        1.dp,
-                        if (torchEnabled) themeColor else Color(0xFF2E2C33),
-                        CircleShape
-                    )
-                    .clickable { onToggleTorch() }
-                    .testTag("torch_button"),
-                contentAlignment = Alignment.Center
+            // Élő mód: 1 sor, 4 gomb (Torch, Save, Hero Shutter, Share)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = if (torchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
-                    contentDescription = stringResource(R.string.cd_torch),
-                    tint = if (torchEnabled) Color.Black else Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-
-        // Save Button (compact circular glass button)
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(Color(0xFF1F1E26), CircleShape)
-                .border(1.dp, Color(0xFF2E2C33), CircleShape)
-                .clickable { onSave() }
-                .testTag("save_button"),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Save,
-                contentDescription = stringResource(R.string.cd_save),
-                tint = Color.White,
-                modifier = Modifier.size(18.dp)
-            )
-        }
-
-        // Hero Freeze/Resume Shutter Button (Dual-ring camera shutter style)
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .border(3.dp, if (isFrozen) Color(0xFFEF4444) else themeColor, CircleShape)
-                .padding(3.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        if (isFrozen) Color(0xFFEF4444) else themeColor,
-                        CircleShape
+                // Torch Button
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            if (torchEnabled) themeColor else Color(0xFF1F1E26),
+                            CircleShape
+                        )
+                        .border(
+                            1.dp,
+                            if (torchEnabled) themeColor else Color(0xFF2E2C33),
+                            CircleShape
+                        )
+                        .clickable { onToggleTorch() }
+                        .testTag("torch_button"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (torchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                        contentDescription = stringResource(R.string.cd_torch),
+                        tint = if (torchEnabled) Color.Black else Color.White,
+                        modifier = Modifier.size(18.dp)
                     )
-                    .clickable { onToggleFreeze() }
-                    .testTag("freeze_toggle_button"),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (isFrozen) Icons.Default.PlayArrow else Icons.Default.Pause,
-                    contentDescription = stringResource(if (isFrozen) R.string.cd_resume else R.string.cd_freeze),
-                    tint = Color.Black,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
+                }
 
-        // Share Button (compact circular glass button)
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .background(Color(0xFF1F1E26), CircleShape)
-                .border(1.dp, Color(0xFF2E2C33), CircleShape)
-                .clickable { onShare() }
-                .testTag("share_button"),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Share,
-                contentDescription = stringResource(R.string.cd_share),
-                tint = Color.White,
-                modifier = Modifier.size(18.dp)
-            )
+                // Save Button
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Color(0xFF1F1E26), CircleShape)
+                        .border(1.dp, Color(0xFF2E2C33), CircleShape)
+                        .clickable { onSave() }
+                        .testTag("save_button"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Save,
+                        contentDescription = stringResource(R.string.cd_save),
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                // Hero Shutter Button
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .border(3.dp, themeColor, CircleShape)
+                        .padding(3.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(themeColor, CircleShape)
+                            .clickable { onToggleFreeze() }
+                            .testTag("freeze_toggle_button"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Pause,
+                            contentDescription = stringResource(R.string.cd_freeze),
+                            tint = Color.Black,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                // Share Button
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Color(0xFF1F1E26), CircleShape)
+                        .border(1.dp, Color(0xFF2E2C33), CircleShape)
+                        .clickable { onShare() }
+                        .testTag("share_button"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = stringResource(R.string.cd_share),
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
         }
     }
 }
