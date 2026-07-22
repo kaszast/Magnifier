@@ -1310,7 +1310,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                         .height(screenHeight * 0.46f)
                         .padding(horizontal = 16.dp)
                         .padding(bottom = innerPadding.calculateBottomPadding() + 16.dp)
-                        .background(Color(0xE60D0C11), RoundedCornerShape(28.dp))
+                        .background(Color(0xBF0D0C11), RoundedCornerShape(28.dp))
                         .border(1.dp, Color(0xFF2E2C33).copy(alpha = 0.6f), RoundedCornerShape(28.dp))
                         .clickable(
                             interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },

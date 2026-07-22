@@ -11,9 +11,9 @@ android {
   defaultConfig {
     applicationId = "com.aistudio.magnifier.nwzkpq"
     minSdk = 24
-    targetSdk = 35
-    versionCode = 46
-    versionName = "0.94barcode"
+    targetSdk = 36
+    versionCode = 50
+    versionName = "0.98"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

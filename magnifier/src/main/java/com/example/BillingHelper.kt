@@ -76,11 +76,11 @@ class BillingHelper(
             )
             .build()
 
-        billingClient?.queryProductDetailsAsync(queryProductDetailsParams) { billingResult, detailsList ->
+        billingClient?.queryProductDetailsAsync(queryProductDetailsParams) { billingResult, queryResult ->
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                 scope.launch {
                     productDetailsList.clear()
-                    productDetailsList.addAll(detailsList)
+                    productDetailsList.addAll(queryResult.productDetailsList)
                 }
             }
         }
