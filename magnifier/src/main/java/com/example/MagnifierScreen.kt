@@ -712,8 +712,8 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
         previewUseCase?.setSurfaceProvider(previewView.surfaceProvider)
     }
 
-    // A ZoomMinimap kis bélyegképének (liveThumbnailBitmap) kíméletes frissítése digitális zoom esetén.
-    // 500ms-os időközönként frissítjük a kis kártya képét, megszüntetve a tekerő karikát.
+    // A ZoomMinimap kis bélyegképének (liveThumbnailBitmap) frissítése digitális zoom esetén.
+    // 100ms-os (0.1 mp) időközönként frissítjük a kis kártya képét a sima, nem szaggató kisképes nézetért.
     LaunchedEffect(extraDigitalZoom > 1.0f) {
         if (extraDigitalZoom > 1.0f) {
             while (true) {
@@ -725,7 +725,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                 } catch (e: Exception) {
                     // ignore
                 }
-                delay(500)
+                delay(100)
             }
         } else {
             liveThumbnailBitmap = null
