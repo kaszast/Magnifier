@@ -114,17 +114,17 @@
     <string name="walkthrough_title_5">6. Fókusz &#38; Kamera módok</string>
     <string name="walkthrough_body_5">Válassz manuális fókuszt a tűéles képért. A sikeres fókuszálást rezgéssel jelezzük. Kapcsolj be HDR vagy Éjszakai képjavítást a Beállításokban!</string>
     <string name="walkthrough_title_6">7. Fő funkciók ikonjai</string>
-    <string name="walkthrough_body_6">⚡ Vaku: Gyenge fényviszonyokhoz.\n⏸️ Kimerevítés: Megállítja a kameraképet a könnyebb olvasásért.\n🔄 Elforgatás: Kimerevített kép elforgatása 90°-onként.\n🪞 Tükrözés: Kimerevített kép vízszintes tükrözése.\n💾 Mentés: A feljavított kép mentése a galériába.\n📤 Megosztás: Kép közvetlen küldése másoknak.\n📝 Szövegolvasó (OCR): Szövegek felismerése és felolvasása.\n🔳 QR/Vonalkód: QR-kódok és vonalkódok beolvasása.</string>
+    <string name="walkthrough_body_6">Vaku: Gyenge fényviszonyokhoz.\nKimerevítés: Megállítja a kameraképet a könnyebb olvasásért.\nElforgatás: Kimerevített kép elforgatása 90°-onként.\nTükrözés: Kimerevített kép vízszintes tükrözése.\nMentés: A feljavított kép mentése a galériába.\nMegosztás: Kép közvetlen küldése másoknak.\nSzövegolvasó (OCR): Szövegek felismerése és felolvasása.\nQR/Vonalkód: QR-kódok és vonalkódok beolvasása.</string>
     <string name="walkthrough_title_7">8. Képjavítás &#38; Csúszkák</string>
-    <string name="walkthrough_body_7">🔍 Zoom csúszka: Kép nagyítása logaritmikus, finom skálán.\n☀️ Fényerő / Expozíció: Kép világosítása (érintésre visszaáll 0-ra).\n🌗 Kontraszt csúszka: Szöveg kontrasztjának növelése (érintésre visszaáll 1.0-ra).\n📐 Élesítés: Betűk körvonalának javítása (érintésre visszaáll 0.0-ra).</string>
+    <string name="walkthrough_body_7">Zoom csúszka: Kép nagyítása logaritmikus, finom skálán.\nFényerő / Expozíció: Kép világosítása (érintésre visszaáll 0-ra).\nKontraszt csúszka: Szöveg kontrasztjának növelése (érintésre visszaáll 1.0-ra).\nÉlesítés: Betűk körvonalának javítása (érintésre visszaáll 0.0-ra).</string>
     <string name="walkthrough_title_8">9. Fókusz &#38; Beállítások</string>
-    <string name="walkthrough_body_8">🎯 Auto Fókusz: Folyamatos automata élesítés.\n⚙️ Manuális fókusz csúszka: Kézi fókuszállítás (érintésre visszaáll Auto-ra).\n🌈 Téma pöttyök: Alkalmazás színsémájának módosítása.\n🌐 Nyelv (zászló): Váltás a magyar és angol nyelv között.\n🌟 Értékelés: Alkalmazás értékelése a Play Áruházban.</string>
+    <string name="walkthrough_body_8">Auto Fókusz: Folyamatos automata élesítés.\nManuális fókusz csúszka: Kézi fókuszállítás (érintésre visszaáll Auto-ra).\nTéma pöttyök: Alkalmazás színsémájának módosítása.\nNyelv (zászló): Váltás a magyar és angol nyelv között.\nÉrtékelés: Alkalmazás értékelése a Play Áruházban.</string>
     <string name="action_next">Tovább</string>
     <string name="action_skip">Kihagyás</string>
     <string name="action_start_using">Kezdés</string>
 
     <!-- Tip Jar / Támogatás -->
-    <string name="tip_jar_title">Támogasd a fejlesztőt!️</string>
+    <string name="tip_jar_title">Támogasd a fejlesztőt!</string>
     <string name="tip_jar_description">Ha hasznosnak találod ezt a reklámmentes nagyítót, támogasd a munkámat egy kávé árával. Köszönöm!</string>
     <string name="tip_tier_small">Espresso</string>
     <string name="tip_tier_medium">Dupla</string>

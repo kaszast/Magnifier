@@ -2,6 +2,7 @@ package com.example
 
 import androidx.compose.material.icons.automirrored.filled.TextSnippet
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -20,16 +21,43 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
 import androidx.compose.material.icons.automirrored.filled.RotateRight
+
+fun Modifier.drawVerticalScrollbar(
+    scrollState: ScrollState,
+    color: Color = Color.White.copy(alpha = 0.45f),
+    width: Dp = 4.dp
+): Modifier = this.drawWithContent {
+    drawContent()
+    if (scrollState.maxValue > 0) {
+        val elementHeight = size.height
+        val totalHeight = elementHeight + scrollState.maxValue.toFloat()
+        val thumbHeight = (elementHeight / totalHeight * elementHeight).coerceAtLeast(24.dp.toPx())
+        val scrollOffset = scrollState.value.toFloat() / scrollState.maxValue.toFloat()
+        val thumbY = scrollOffset * (elementHeight - thumbHeight)
+
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(size.width - width.toPx(), thumbY),
+            size = Size(width.toPx(), thumbHeight),
+            cornerRadius = CornerRadius(width.toPx() / 2, width.toPx() / 2)
+        )
+    }
+}
 
 data class WalkthroughStep(
     val titleRes: Int,
@@ -153,11 +181,13 @@ fun WalkthroughOverlay(
                         .height(360.dp)
                 ) { page ->
                     val step = steps[page]
+                    val scrollState = rememberScrollState()
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 16.dp)
-                            .verticalScroll(rememberScrollState()),
+                            .drawVerticalScrollbar(scrollState)
+                            .verticalScroll(scrollState),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
@@ -191,7 +221,7 @@ fun WalkthroughOverlay(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         // Body description
-                        if (page >= 5) {
+                        if (page >= 6) {
                             val bodyText = stringResource(step.bodyRes)
                             val parsedLines = remember(bodyText) { parseOnboardingLines(bodyText) }
                             Column(
@@ -309,23 +339,26 @@ fun WalkthroughOverlay(
     }
 }
 
-private fun getIconForEmoji(emoji: String): ImageVector {
-    return when (emoji) {
-        "⚡" -> Icons.Default.FlashOn
-        "⏸️", "⏸" -> Icons.Default.Pause
-        "💾" -> Icons.Default.Save
-        "📤" -> Icons.Default.Share
-        "📝" -> Icons.AutoMirrored.Filled.TextSnippet
-        "🔳" -> Icons.Default.QrCodeScanner
-        "🔍" -> Icons.Default.ZoomIn
-        "☀️" -> Icons.Default.Brightness5
-        "🌗" -> Icons.Default.Contrast
-        "📐" -> Icons.Default.ChangeHistory
-        "🎯" -> Icons.Default.CenterFocusStrong
-        "⚙️", "⚙" -> Icons.Default.Tune
-        "🌈" -> Icons.Default.Palette
-        "🌐" -> Icons.Default.Language
-        "🌟" -> Icons.Default.Star
+private fun getIconForTitle(title: String): ImageVector {
+    val lower = title.lowercase()
+    return when {
+        lower.contains("vaku") || lower.contains("flash") -> Icons.Default.FlashOn
+        lower.contains("kimerevítés") || lower.contains("freeze") -> Icons.Default.Pause
+        lower.contains("elforgatás") || lower.contains("rotate") -> Icons.AutoMirrored.Filled.RotateRight
+        lower.contains("tükrözés") || lower.contains("flip") -> Icons.Default.Flip
+        lower.contains("mentés") || lower.contains("save") -> Icons.Default.Save
+        lower.contains("megosztás") || lower.contains("share") -> Icons.Default.Share
+        lower.contains("szövegolvasó") || lower.contains("text reader") || lower.contains("ocr") -> Icons.AutoMirrored.Filled.TextSnippet
+        lower.contains("qr") || lower.contains("vonalkód") || lower.contains("barcode") -> Icons.Default.QrCodeScanner
+        lower.contains("zoom") || lower.contains("nagyítás") -> Icons.Default.ZoomIn
+        lower.contains("fényerő") || lower.contains("brightness") || lower.contains("expozíció") || lower.contains("exposure") -> Icons.Default.Brightness5
+        lower.contains("kontraszt") || lower.contains("contrast") -> Icons.Default.Contrast
+        lower.contains("élesítés") || lower.contains("sharpen") -> Icons.Default.ChangeHistory
+        lower.contains("auto fókusz") || lower.contains("auto focus") -> Icons.Default.CenterFocusStrong
+        lower.contains("manuális fókusz") || lower.contains("manual focus") -> Icons.Default.Tune
+        lower.contains("téma") || lower.contains("theme") -> Icons.Default.Palette
+        lower.contains("nyelv") || lower.contains("language") -> Icons.Default.Language
+        lower.contains("értékelés") || lower.contains("rate") -> Icons.Default.Star
         else -> Icons.Default.Info
     }
 }
@@ -336,16 +369,13 @@ private fun parseOnboardingLines(text: String): List<ParsedLine> {
     val lines = text.split("\n")
     return lines.mapNotNull { line ->
         if (line.isBlank()) return@mapNotNull null
-        val emojis = listOf("⚡", "⏸️", "⏸", "💾", "📤", "📝", "🔳", "🔍", "☀️", "🌗", "📐", "🎯", "⚙️", "⚙", "🌈", "🌐", "🌟")
-        val foundEmoji = emojis.firstOrNull { line.startsWith(it) } ?: ""
-        val remaining = line.substring(foundEmoji.length).trim()
-        val colonIndex = remaining.indexOf(":")
+        val colonIndex = line.indexOf(":")
         if (colonIndex != -1) {
-            val title = remaining.substring(0, colonIndex).trim()
-            val desc = remaining.substring(colonIndex + 1).trim()
-            ParsedLine(getIconForEmoji(foundEmoji), title, desc)
+            val title = line.substring(0, colonIndex).trim()
+            val desc = line.substring(colonIndex + 1).trim()
+            ParsedLine(getIconForTitle(title), title, desc)
         } else {
-            ParsedLine(getIconForEmoji(foundEmoji), remaining, "")
+            ParsedLine(getIconForTitle(line), line.trim(), "")
         }
     }
 }
