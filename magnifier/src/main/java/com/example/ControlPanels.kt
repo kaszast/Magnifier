@@ -35,6 +35,9 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -443,8 +446,30 @@ fun CombinedZoomFiltersTuneTabContent(
     onFocusModeChange: (String) -> Unit,
     manualFocusDistance: Float,
     onManualFocusDistanceChange: (Float) -> Unit,
-    minFocusDistance: Float
+    minFocusDistance: Float,
+    onSliderDraggingChange: (Boolean) -> Unit = {}
 ) {
+    val zoomInteractionSource = remember { MutableInteractionSource() }
+    val isZoomDragged by zoomInteractionSource.collectIsDraggedAsState()
+
+    val brightnessInteractionSource = remember { MutableInteractionSource() }
+    val isBrightnessDragged by brightnessInteractionSource.collectIsDraggedAsState()
+
+    val contrastInteractionSource = remember { MutableInteractionSource() }
+    val isContrastDragged by contrastInteractionSource.collectIsDraggedAsState()
+
+    val sharpenInteractionSource = remember { MutableInteractionSource() }
+    val isSharpenDragged by sharpenInteractionSource.collectIsDraggedAsState()
+
+    val focusInteractionSource = remember { MutableInteractionSource() }
+    val isFocusDragged by focusInteractionSource.collectIsDraggedAsState()
+
+    val isAnySliderDragging = isZoomDragged || isBrightnessDragged || isContrastDragged || isSharpenDragged || isFocusDragged
+
+    LaunchedEffect(isAnySliderDragging) {
+        onSliderDraggingChange(isAnySliderDragging)
+    }
+
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween
@@ -476,6 +501,7 @@ fun CombinedZoomFiltersTuneTabContent(
                     }
                 },
                 valueRange = sliderMinLog..sliderMaxLog,
+                interactionSource = zoomInteractionSource,
                 colors = SliderDefaults.colors(
                     activeTrackColor = themeColor,
                     thumbColor = themeColor,
@@ -520,6 +546,7 @@ fun CombinedZoomFiltersTuneTabContent(
                 onValueChange = { onBrightnessChange(it) },
                 valueRange = -80f..80f,
                 enabled = isFrozen,
+                interactionSource = brightnessInteractionSource,
                 colors = SliderDefaults.colors(
                     activeTrackColor = themeColor,
                     thumbColor = themeColor,
@@ -665,6 +692,7 @@ fun CombinedZoomFiltersTuneTabContent(
                     }
                 },
                 valueRange = if (isFrozen) 1.0f..3.0f else minExposureIndex.toFloat()..maxExposureIndex.toFloat(),
+                interactionSource = contrastInteractionSource,
                 colors = SliderDefaults.colors(
                     activeTrackColor = themeColor,
                     thumbColor = themeColor,
@@ -724,6 +752,7 @@ fun CombinedZoomFiltersTuneTabContent(
                     onValueChange = { draggingValue = it },
                     onValueChangeFinished = { onSharpenStrengthChange(draggingValue) },
                     valueRange = 0.0f..10.0f,
+                    interactionSource = sharpenInteractionSource,
                     colors = SliderDefaults.colors(
                         activeTrackColor = themeColor,
                         thumbColor = themeColor,
@@ -812,6 +841,7 @@ fun CombinedZoomFiltersTuneTabContent(
                         onValueChange = onManualFocusDistanceChange,
                         valueRange = 0f..minFocusDistance.coerceAtLeast(0.1f),
                         enabled = isManualEnabled,
+                        interactionSource = focusInteractionSource,
                         colors = SliderDefaults.colors(
                             activeTrackColor = themeColor,
                             thumbColor = themeColor,
