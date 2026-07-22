@@ -1435,7 +1435,7 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                             } else {
                                 val bmp = previewView.bitmap
                                 if (bmp != null) {
-                                    // Azonnali fagyasztás a preview-snapshottal, hogy ne legyen érzékelhető késleltetés
+                                    // Azonnali és végleges fagyasztás a pontosan látható képkockával
                                     rawFrozenBitmap = bmp
                                     isFrozen = true
                                     // Transfer current extra digital zoom and pan seamlessly to the frozen frame view
@@ -1443,24 +1443,6 @@ fun MagnifierMainScreen(launchCount: Int = 0, zoomEventFlow: kotlinx.coroutines.
                                     frozenOffset = extraDigitalPan
                                     frozenRotationDegrees = 0
                                     frozenIsFlippedHorizontal = false
-
-                                    // Háttérben natív felbontású still capture, ami megérkezéskor lecseréli a snapshotot
-                                    val capture = imageCapture
-                                    val targetAspect = if (bmp.height > 0) bmp.width.toFloat() / bmp.height.toFloat() else 0f
-                                    if (capture != null && !isHdrEnabled && !isNightEnabled) {
-                                        coroutineScope.launch {
-                                            val jpeg = awaitCapturedJpeg(capture, context)
-                                            val hiRes = jpeg?.let {
-                                                withContext(Dispatchers.Default) {
-                                                    decodeCapturedJpeg(it.bytes, it.rotationDegrees, targetAspect)
-                                                }
-                                            }
-                                            // Csak akkor cserélünk, ha még ugyanez a fagyasztás él
-                                            if (hiRes != null && isFrozen && rawFrozenBitmap === bmp) {
-                                                rawFrozenBitmap = hiRes
-                                            }
-                                        }
-                                    }
                                 } else {
                                     toastIcon = Icons.Default.Pause
                                     toastSubIcon = Icons.Default.Error
